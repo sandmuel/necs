@@ -1,0 +1,344 @@
+#![feature(proc_macro_totokens)]
+
+use proc_macro::TokenStream;
+use quote::ToTokens;
+use quote::{format_ident, quote};
+use syn::parse::{Parse, ParseStream};
+use syn::{Attribute, Data, DeriveInput, Fields, Generics, TypeTuple, Visibility, parse_quote};
+
+/// This macro generates three types from the given type.
+///
+/// Input:
+
+struct GeneratedNodeBuilder {
+    attrs: Vec<Attribute>,
+    vis: Visibility,
+    ident: proc_macro2::Ident,
+    generics: Generics,
+    fields: Fields,
+    node_ref: proc_macro2::Ident,
+}
+
+impl Parse for GeneratedNodeBuilder {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let input: DeriveInput = input.parse()?;
+        let err_input = input.clone();
+
+        let attrs = input.attrs;
+        let vis = input.vis;
+        let ident = format_ident!("{}Builder", input.ident);
+        let generics = input.generics;
+        let node_ref = input.ident;
+
+        let fields = match input.data {
+            Data::Struct(data) => match data.fields {
+                Fields::Named(fields) => Fields::Named(fields),
+                Fields::Unit => Fields::Unit,
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        err_input,
+                        "struct fields must be named",
+                    ));
+                }
+            },
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    err_input,
+                    "only structs are supported",
+                ));
+            }
+        };
+
+        Ok(Self {
+            attrs,
+            vis,
+            ident,
+            generics,
+            fields,
+            node_ref,
+        })
+    }
+}
+
+impl ToTokens for GeneratedNodeBuilder {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let attrs = &self.attrs;
+        let vis = &self.vis;
+        let ident = &self.ident;
+        let generics = &self.generics;
+        let node_ref = &self.node_ref;
+
+        // Generate struct fields.
+        let struct_fields = match &self.fields {
+            Fields::Named(fields) => {
+                let fields = fields.named.iter().map(|field| {
+                    let field_name = &field.ident;
+                    let field_ty = &field.ty;
+                    // Filter out #[ext] attributes.
+                    let attrs = field
+                        .attrs
+                        .iter()
+                        .filter(|attr| !attr.path().is_ident("ext"));
+                    quote! {
+                        #(#attrs)*
+                        #field_name: #field_ty
+                    }
+                });
+                quote! {
+                    { #(#fields,)* }
+                }
+            }
+            Fields::Unit => quote! {},
+            _ => unreachable!("struct fields should not be unnamed"),
+        };
+
+        // Generate field assignments for __move_to_storage().
+        let field_assignments = match &self.fields {
+            Fields::Named(fields) => {
+                let assignments = fields.named.iter().map(|field| {
+                    let field_name = &field.ident;
+                    let has_ext = field.attrs.iter().any(|attr| attr.path().is_ident("ext"));
+
+                    if has_ext {
+                        quote! {
+                            let #field_name = storage.components.spawn(self.#field_name);
+                        }
+                    } else {
+                        quote! {
+                            let #field_name = self.#field_name;
+                        }
+                    }
+                });
+
+                let tuple_fields = fields.named.iter().map(|field| {
+                    let field_name = &field.ident;
+                    quote! { #field_name }
+                });
+
+                quote! {
+                    #(#assignments)*
+                    storage.nodes.spawn((#(#tuple_fields,)*))
+                }
+            }
+            Fields::Unit => quote! {
+                storage.nodes.spawn(())
+            },
+            _ => unreachable!("struct fields should not be unnamed"),
+        };
+
+        quote! {
+            #(#attrs)*
+            #vis struct #ident #generics #struct_fields
+
+            impl ::necs_internal::NodeBuilder for #ident #generics {
+                type AsNodeRef = #node_ref<'static>;
+
+                unsafe fn __move_to_storage(self, storage: &mut ::necs_internal::storage::Storage) -> ::necs_internal::NodeId {
+                    #field_assignments
+                }
+            }
+        }
+        .to_tokens(tokens);
+    }
+}
+
+struct FieldInfo {
+    ident: syn::Ident,
+    ty: syn::Type,
+    is_ext: bool,
+    attrs: Vec<Attribute>,
+}
+
+struct GeneratedNodeRef {
+    attrs: Vec<Attribute>,
+    vis: Visibility,
+    ident: proc_macro2::Ident,
+    generics: Generics,
+    fields: Vec<FieldInfo>,
+    recipe_tuple: TypeTuple,
+}
+
+impl Parse for GeneratedNodeRef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let input: DeriveInput = input.parse()?;
+        let err_input = input.clone();
+
+        let attrs = input.attrs;
+        let vis = input.vis;
+        let ident = input.ident;
+        let mut generics = input.generics;
+
+        if !generics
+            .params
+            .iter()
+            .any(|p| matches!(p, syn::GenericParam::Lifetime(l) if l.lifetime.ident == "node"))
+        {
+            generics.params.insert(0, syn::parse_quote!('node));
+
+            // Ensure the <...> brackets exist if they weren't already
+            if generics.lt_token.is_none() {
+                generics.lt_token = Some(Default::default());
+                generics.gt_token = Some(Default::default());
+            }
+        }
+
+        let data = match input.data {
+            Data::Struct(data) => data,
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    err_input,
+                    "only structs are supported",
+                ));
+            }
+        };
+
+        let mut field_infos = Vec::new();
+        let mut tuple_types = Vec::new();
+
+        match data.fields {
+            Fields::Named(named_fields) => {
+                for field in named_fields.named {
+                    let is_ext = field.attrs.iter().any(|attr| attr.path().is_ident("ext"));
+                    let mut attrs = field.attrs;
+                    attrs.retain(|attr| !attr.path().is_ident("ext"));
+
+                    let ty = if is_ext {
+                        let inner = &field.ty;
+                        tuple_types.push(parse_quote!(::necs_internal::ComponentId<#inner>));
+                        parse_quote!(&'node mut #inner)
+                    } else {
+                        tuple_types.push(field.ty.clone());
+                        field.ty.clone()
+                    };
+
+                    // Safe because fields are named.
+                    let ident = field.ident.unwrap();
+                    field_infos.push(FieldInfo {
+                        ident,
+                        ty,
+                        is_ext,
+                        attrs,
+                    });
+                }
+            }
+            Fields::Unit => {}
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    err_input,
+                    "struct fields must be named",
+                ));
+            }
+        }
+
+        let recipe_ty: syn::Type = parse_quote!((#(#tuple_types),*));
+        let recipe_tuple = match recipe_ty {
+            syn::Type::Tuple(tup) => tup,
+            _ => return Err(syn::Error::new_spanned(recipe_ty, "expected tuple type")),
+        };
+
+        Ok(Self {
+            attrs,
+            vis,
+            ident,
+            generics,
+            fields: field_infos,
+            recipe_tuple,
+        })
+    }
+}
+
+impl ToTokens for GeneratedNodeRef {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let Self {
+            attrs,
+            vis,
+            ident,
+            generics,
+            fields,
+            recipe_tuple,
+        } = self;
+
+        // Emit struct fields
+        let struct_fields = fields.iter().map(|field| {
+            let FieldInfo {
+                ident, ty, attrs, ..
+            } = field;
+            quote! {
+                #(#attrs)*
+                #ident: #ty,
+            }
+        });
+
+        // Field extraction logic
+        let mut field_extractions = Vec::new();
+        let mut component_registrations = Vec::new();
+        let mut idx = 0;
+
+        for field in fields {
+            let tuple_idx = syn::Index::from(idx);
+            let name = &field.ident;
+
+            if field.is_ext {
+                field_extractions.push(quote! {
+                    let #name = &mut storage.components[&recipe_tuple.#tuple_idx];
+                });
+
+                // Get the original type (without the reference)
+                if let syn::Type::Reference(type_ref) = &field.ty {
+                    let inner_type = &type_ref.elem;
+                    component_registrations.push(quote! {
+                        storage.components.register::<#inner_type>();
+                    });
+                }
+            } else {
+                field_extractions.push(quote! {
+                    let #name = recipe_tuple.#tuple_idx;
+                });
+            }
+            idx += 1;
+        }
+
+        let field_names = fields.iter().map(|f| &f.ident);
+
+        quote! {
+            #(#attrs)*
+            #vis struct #ident #generics {
+                #(#struct_fields)*
+            }
+
+            impl #generics ::necs_internal::NodeRef for #ident #generics {
+                type RecipeTuple = #recipe_tuple;
+
+                unsafe fn __build_from_storage(storage: &mut ::necs_internal::storage::Storage, id: ::necs_internal::NodeId) -> Self {
+                    let storage = ::std::mem::transmute::<_, &'static mut ::necs_internal::storage::Storage>(storage);
+                    let recipe_tuple = storage
+                        .nodes[id.node_type]
+                        .downcast_mut_unchecked::<::necs_internal::SubStorage<Self::RecipeTuple>>()
+                        .get_mut(id.instance).unwrap();;
+                    #(#field_extractions)*
+                    Self {
+                        #(#field_names,)*
+                    }
+                }
+
+                fn __register_node(storage: &mut ::necs_internal::storage::Storage) {
+                    // Register the node itself
+                    storage.nodes.register::<Self::RecipeTuple>();
+
+                    // Register every #[ext] field with component storage
+                    #(#component_registrations)*
+                }
+            }
+        }
+            .to_tokens(tokens);
+    }
+}
+
+#[proc_macro_attribute]
+pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let node_builder = item.clone();
+    let node_ref = item;
+    let node_builder = syn::parse_macro_input!(node_builder as GeneratedNodeBuilder);
+    let node_ref = syn::parse_macro_input!(node_ref as GeneratedNodeRef);
+    quote!(#node_builder #node_ref).into()
+}

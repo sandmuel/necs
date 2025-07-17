@@ -1,0 +1,15 @@
+[package]
+name = "necs"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+keywords = ["gamedev"]
+categories = ["game-development"]
+
+[dependencies]
+necs_internal = { path = "necs_internal" }
+necs_macros = { path = "necs_macros" }
+
+[workspace]
+resolver = "2"
+members = ["necs_internal", "necs_macros"]
