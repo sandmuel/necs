@@ -1,5 +1,6 @@
 use crate::component::{ComponentId, ComponentKey};
 use slotmap::HopSlotMap;
+use slotmap::hop::ValuesMut;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
@@ -11,7 +12,7 @@ pub struct ComponentStorage {
     map: HashMap<TypeId, Box<dyn Any>>,
 }
 
-impl ComponentStorage {
+impl<'a> ComponentStorage {
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
@@ -36,6 +37,17 @@ impl ComponentStorage {
                     .downcast_mut_unchecked::<HopSlotMap<ComponentKey, T>>()
                     .insert(component),
             )
+        }
+    }
+
+    pub fn get_all<T: 'static>(&'a mut self) -> ValuesMut<'a, ComponentKey, T> {
+        unsafe {
+            self.map
+                .get_mut(&TypeId::of::<T>())
+                .expect("component type should be registered first")
+                .downcast_mut_unchecked::<HopSlotMap<ComponentKey, T>>()
+                .values_mut()
+                .into_iter()
         }
     }
 }

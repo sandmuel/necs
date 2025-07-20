@@ -14,9 +14,9 @@ pub trait Field: Any {}
 impl<T: 'static + Any> Field for T {}
 
 impl dyn Field {
-    pub fn try_as<T: 'static>(&mut self) -> &mut T {
-        let any: &mut dyn Any = self;
-        any.downcast_mut::<T>()
+    pub fn to<T: 'static>(&mut self) -> &mut T {
+        (self as &mut dyn Any)
+            .downcast_mut::<T>()
             .expect(&format!("invalid downcast to {}", type_name::<T>()))
     }
 }

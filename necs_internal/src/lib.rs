@@ -18,7 +18,7 @@ pub type SubStorage<T> = HopSlotMap<DefaultKey, T>;
 pub struct World {
     // Maps type ids to types, allowing us to work on Nodes without knowing their types.
     pub type_map: TypeMap,
-    storage: Storage,
+    pub storage: Storage,
     // TODO: Keep track of borrowed components and nodes.
 }
 
@@ -53,7 +53,6 @@ impl World {
     /// The node associated with the given [NodeId] must be of type T.
     pub fn get_node_resilient<T: 'static>(&mut self, id: NodeId) -> T {
         // The safety of this entirely depends on everything else not having issues.
-        println!("Get {:?} from typemap", id.node_type);
         // TODO fix this. node_type is currently the RecipeTuple rather than the actual
         // node type.
         unsafe { self.type_map.get_node::<T>(&mut self.storage, id) }
