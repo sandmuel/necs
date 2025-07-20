@@ -1,12 +1,24 @@
 use crate::Storage;
 use slotmap::DefaultKey;
-use std::any::TypeId;
+use std::any::{Any, TypeId, type_name};
 use std::marker::Tuple;
 
 #[derive(Debug, Copy, Clone)]
 pub struct NodeId {
     pub node_type: TypeId,
     pub instance: DefaultKey,
+}
+
+pub trait Field: Any {}
+
+impl<T: 'static + Any> Field for T {}
+
+impl dyn Field {
+    pub fn try_as<T: 'static>(&mut self) -> &mut T {
+        let any: &mut dyn Any = self;
+        any.downcast_mut::<T>()
+            .expect(&format!("invalid downcast to {}", type_name::<T>()))
+    }
 }
 
 /// Do **not** implement this trait.
@@ -37,4 +49,8 @@ pub trait NodeRef {
     /// Registers this node to node storage and all fields with the `#[ext]`
     /// attribute to component storage.
     fn __register_node(storage: &mut Storage);
+}
+
+pub trait Node {
+    fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }

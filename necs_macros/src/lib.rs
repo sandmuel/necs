@@ -1,14 +1,8 @@
-#![feature(proc_macro_totokens)]
-
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::{Attribute, Data, DeriveInput, Fields, Generics, TypeTuple, Visibility, parse_quote};
-
-/// This macro generates three types from the given type.
-///
-/// Input:
 
 struct GeneratedNodeBuilder {
     attrs: Vec<Attribute>,
@@ -175,7 +169,7 @@ impl Parse for GeneratedNodeRef {
         {
             generics.params.insert(0, syn::parse_quote!('node));
 
-            // Ensure the <...> brackets exist if they weren't already
+            // Ensure the angled brackets.
             if generics.lt_token.is_none() {
                 generics.lt_token = Some(Default::default());
                 generics.gt_token = Some(Default::default());
@@ -207,8 +201,9 @@ impl Parse for GeneratedNodeRef {
                         tuple_types.push(parse_quote!(::necs_internal::ComponentId<#inner>));
                         parse_quote!(&'node mut #inner)
                     } else {
+                        let inner = &field.ty;
                         tuple_types.push(field.ty.clone());
-                        field.ty.clone()
+                        parse_quote!(&'node mut #inner)
                     };
 
                     // Safe because fields are named.
@@ -292,7 +287,7 @@ impl ToTokens for GeneratedNodeRef {
                 }
             } else {
                 field_extractions.push(quote! {
-                    let #name = recipe_tuple.#tuple_idx;
+                    let #name = &mut recipe_tuple.#tuple_idx;
                 });
             }
             idx += 1;
@@ -300,21 +295,50 @@ impl ToTokens for GeneratedNodeRef {
 
         let field_names = fields.iter().map(|f| &f.ident);
 
+        // Generate match arms for Node::get implementation
+        let get_match_arms = fields.iter().map(|field| {
+            let name = &field.ident;
+            let mut ty = &field.ty;
+            if let syn::Type::Reference(type_ref) = &field.ty {
+                ty = &type_ref.elem;
+            }
+            let name_str = name.to_string();
+
+            quote! {
+                #name_str => unsafe {
+                    ::std::mem::transmute::<&mut #ty, &'static mut #ty>(self.#name)
+                },
+            }
+        });
+
         quote! {
             #(#attrs)*
             #vis struct #ident #generics {
                 #(#struct_fields)*
             }
 
+            impl #generics ::necs_internal::Node for #ident #generics {
+                fn get(&mut self, field_name: &str) -> &mut dyn ::necs_internal::Field {
+                    match field_name {
+                        #(#get_match_arms)*
+                        _ => panic!("{} does not exist on {}", field_name, ::std::any::type_name::<Self>()),
+                    }
+                }
+            }
+
             impl #generics ::necs_internal::NodeRef for #ident #generics {
                 type RecipeTuple = #recipe_tuple;
 
                 unsafe fn __build_from_storage(storage: &mut ::necs_internal::storage::Storage, id: ::necs_internal::NodeId) -> Self {
-                    let storage = ::std::mem::transmute::<_, &'static mut ::necs_internal::storage::Storage>(storage);
-                    let recipe_tuple = storage
-                        .nodes[id.node_type]
-                        .downcast_mut_unchecked::<::necs_internal::SubStorage<Self::RecipeTuple>>()
-                        .get_mut(id.instance).unwrap();;
+                    let storage = unsafe {
+                        ::std::mem::transmute::<_, &'static mut ::necs_internal::storage::Storage>(storage)
+                    };
+                    let recipe_tuple = unsafe {
+                        storage
+                            .nodes[id.node_type]
+                            .downcast_mut_unchecked::<::necs_internal::SubStorage<Self::RecipeTuple>>()
+                            .get_mut(id.instance).unwrap()
+                    };
                     #(#field_extractions)*
                     Self {
                         #(#field_names,)*

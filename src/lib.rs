@@ -1,52 +1,52 @@
 #![feature(downcast_unchecked)]
 
-pub use necs_internal::World;
+mod register_traits;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub use necs_internal::World;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use necs_internal::ComponentId;
+    use necs_internal::Node;
     use necs_macros::node;
-    use std::any::{Any, TypeId};
+
+    #[derive(Debug)]
+    struct CantCopy;
 
     #[node]
     struct Foo {
-        x: u64,
+        x: CantCopy,
         y: i32,
         #[ext]
         bar: u32,
     }
 
-    trait Banana {
-        fn banana(&self);
+    trait Process: Node {
+        fn process(&self);
     }
 
-    impl Banana for Foo<'_> {
-        fn banana(&self) {
-            println!("{}", self.x);
+    impl Process for Foo<'_> {
+        fn process(&self) {
+            println!("{:?}", &self.x);
         }
     }
 
     #[test]
     fn it_works() {
         let mut world = World::new();
+        register_with_traits!(world, Foo<'_>, [Process]);
 
-        world.register_node::<Foo>();
-
-        let node_id = world.spawn_node(FooBuilder { x: 8, y: 3, bar: 2 });
-        println!("node_id = {:?}", node_id);
-        println!("{:#?}", world);
+        let node_id = world.spawn_node(FooBuilder {
+            x: CantCopy {},
+            y: 3,
+            bar: 2,
+        });
         let node = world.get_node::<Foo>(node_id);
-        println!(
-            "{:?}, {:?}",
-            node_id.node_type,
-            TypeId::of::<(u64, i32, ComponentId<u32>)>()
-        );
-        let node = world.get_node_resilient::<Box<dyn Banana>>(node_id);
-        node.banana();
+        println!("{:?}", &node.x);
+        println!("{}", node.bar);
+        node.process();
+        let mut node = world.get_node_resilient::<Box<dyn Process>>(node_id);
+        println!("{}", node.get("bar").try_as::<u32>());
+        node.process();
     }
 }
