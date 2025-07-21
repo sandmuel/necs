@@ -19,7 +19,7 @@ mod tests {
     // Hehe I broke the test oops.
     #[node]
     struct Foo {
-        x: u64,
+        pub x: u64,
         y: i32,
         #[ext]
         bar: u32,

@@ -68,6 +68,7 @@ impl ToTokens for GeneratedNodeBuilder {
                 let fields = fields.named.iter().map(|field| {
                     let field_name = &field.ident;
                     let field_ty = &field.ty;
+                    let field_vis = &field.vis;
                     // Filter out #[ext] attributes.
                     let attrs = field
                         .attrs
@@ -75,7 +76,7 @@ impl ToTokens for GeneratedNodeBuilder {
                         .filter(|attr| !attr.path().is_ident("ext"));
                     quote! {
                         #(#attrs)*
-                        #field_name: #field_ty
+                        #field_vis #field_name: #field_ty
                     }
                 });
                 quote! {
