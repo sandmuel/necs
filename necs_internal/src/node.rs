@@ -37,7 +37,7 @@ pub trait NodeBuilder {
 
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
-pub trait NodeRef: Send {
+pub trait NodeRef: Send + Sync {
     type RecipeTuple: Tuple;
 
     /// Assembles a [NodeRef] from fields stored in the given [Storage].
@@ -51,6 +51,6 @@ pub trait NodeRef: Send {
     fn __register_node(storage: &mut Storage);
 }
 
-pub trait Node {
+pub trait Node: Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }

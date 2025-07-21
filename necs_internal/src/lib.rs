@@ -51,7 +51,7 @@ impl World {
     ///
     /// # Safety
     /// The node associated with the given [NodeId] must be of type T.
-    pub fn get_node_resilient<T: 'static>(&mut self, id: NodeId) -> T {
+    pub fn get_node_resilient<T: 'static + Node>(&mut self, id: NodeId) -> T {
         // The safety of this entirely depends on everything else not having issues.
         // TODO fix this. node_type is currently the RecipeTuple rather than the actual
         // node type.

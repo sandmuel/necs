@@ -13,7 +13,7 @@ pub fn type_from_id<'a, T: 'static + NodeRef>(
 }
 
 pub struct TypeMap {
-    map: BTreeMap<TypeId, Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any + Send>>>,
+    map: BTreeMap<TypeId, Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any + Send> + Send + Sync>>,
 }
 
 impl TypeMap {
@@ -34,7 +34,7 @@ impl TypeMap {
     pub fn register_trait<T, Trait>(&mut self, f: fn(T) -> Box<Trait>)
     where
         T: NodeRef + 'static,
-        Trait: ?Sized + 'static + Send,
+        Trait: ?Sized + 'static + Send + Sync,
     {
         let trait_id = TypeId::of::<Box<Trait>>();
         self.map.insert(
@@ -50,7 +50,7 @@ impl TypeMap {
     /// Fetches a node based on only [NodeId].
     /// # Safety
     /// The node associated with the given [NodeId] must be of type [T].
-    pub unsafe fn get_node<T: 'static>(&mut self, storage: &mut Storage, id: NodeId) -> T {
+    pub unsafe fn get_node<T: 'static + Send + Sync>(&mut self, storage: &mut Storage, id: NodeId) -> T {
         let any = self
             .map
             .get_mut(&TypeId::of::<T>())
