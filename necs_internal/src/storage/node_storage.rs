@@ -9,7 +9,7 @@ type SubStorage<T> = HopSlotMap<DefaultKey, T>;
 
 #[derive(Debug)]
 pub struct NodeStorage {
-    map: HashMap<TypeId, Box<dyn Any + Send>>,
+    map: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl NodeStorage {
@@ -19,14 +19,14 @@ impl NodeStorage {
         }
     }
 
-    pub fn register<T: 'static + Send>(&mut self) {
+    pub fn register<T: 'static + Send + Sync>(&mut self) {
         if !self.map.contains_key(&TypeId::of::<T>()) {
             self.map
                 .insert(TypeId::of::<T>(), Box::new(SubStorage::<T>::new()));
         }
     }
 
-    pub fn spawn<T: 'static + Tuple>(&mut self, node: T) -> NodeId {
+    pub fn spawn<T: 'static + Tuple + Send + Sync>(&mut self, node: T) -> NodeId {
         unsafe {
             NodeId {
                 node_type: TypeId::of::<T>(),
