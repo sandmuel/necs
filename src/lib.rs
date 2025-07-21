@@ -2,6 +2,9 @@
 
 mod register_traits;
 
+#[doc(hidden)]
+pub use necs_internal::*;
+
 pub use necs_internal::World;
 pub use necs_internal::{Node, NodeId, NodeRef};
 pub use necs_macros::node;
@@ -12,6 +15,8 @@ mod tests {
     use necs_internal::Node;
     use necs_macros::node;
 
+    // TODO: Move test tests to a separate crate to avoid circular dependencies
+    // Hehe I broke the test oops.
     #[node]
     struct Foo {
         x: u64,

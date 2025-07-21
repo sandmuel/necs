@@ -124,10 +124,10 @@ impl ToTokens for GeneratedNodeBuilder {
             #(#attrs)*
             #vis struct #ident #generics #struct_fields
 
-            impl ::necs_internal::NodeBuilder for #ident #generics {
+            impl ::necs::NodeBuilder for #ident #generics {
                 type AsNodeRef = #node_ref<'static>;
 
-                unsafe fn __move_to_storage(self, storage: &mut ::necs_internal::storage::Storage) -> ::necs_internal::NodeId {
+                unsafe fn __move_to_storage(self, storage: &mut ::necs::storage::Storage) -> ::necs::NodeId {
                     #field_assignments
                 }
             }
@@ -198,7 +198,7 @@ impl Parse for GeneratedNodeRef {
 
                     let ty = if is_ext {
                         let inner = &field.ty;
-                        tuple_types.push(parse_quote!(::necs_internal::ComponentId<#inner>));
+                        tuple_types.push(parse_quote!(::necs::ComponentId<#inner>));
                         parse_quote!(&'node mut #inner)
                     } else {
                         let inner = &field.ty;
@@ -317,8 +317,8 @@ impl ToTokens for GeneratedNodeRef {
                 #(#struct_fields)*
             }
 
-            impl #generics ::necs_internal::Node for #ident #generics {
-                fn get(&mut self, field_name: &str) -> &mut dyn ::necs_internal::Field {
+            impl #generics ::necs::Node for #ident #generics {
+                fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
                     match field_name {
                         #(#get_match_arms)*
                         _ => panic!("{} does not exist on {}", field_name, ::std::any::type_name::<Self>()),
@@ -326,17 +326,17 @@ impl ToTokens for GeneratedNodeRef {
                 }
             }
 
-            impl #generics ::necs_internal::NodeRef for #ident #generics {
+            impl #generics ::necs::NodeRef for #ident #generics {
                 type RecipeTuple = #recipe_tuple;
 
-                unsafe fn __build_from_storage(storage: &mut ::necs_internal::storage::Storage, id: ::necs_internal::NodeId) -> Self {
+                unsafe fn __build_from_storage(storage: &mut ::necs::storage::Storage, id: ::necs::NodeId) -> Self {
                     let storage = unsafe {
-                        ::std::mem::transmute::<_, &'static mut ::necs_internal::storage::Storage>(storage)
+                        ::std::mem::transmute::<_, &'static mut ::necs::storage::Storage>(storage)
                     };
                     let recipe_tuple = unsafe {
                         storage
                             .nodes[id.node_type]
-                            .downcast_mut_unchecked::<::necs_internal::SubStorage<Self::RecipeTuple>>()
+                            .downcast_mut_unchecked::<::necs::SubStorage<Self::RecipeTuple>>()
                             .get_mut(id.instance).unwrap()
                     };
                     #(#field_extractions)*
@@ -345,7 +345,7 @@ impl ToTokens for GeneratedNodeRef {
                     }
                 }
 
-                fn __register_node(storage: &mut ::necs_internal::storage::Storage) {
+                fn __register_node(storage: &mut ::necs::storage::Storage) {
                     // Register the node itself
                     storage.nodes.register::<Self::RecipeTuple>();
 
