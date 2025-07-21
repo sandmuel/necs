@@ -9,7 +9,7 @@ use std::ops::{Index, IndexMut};
 pub struct ComponentStorage {
     // This is always a BTreeMap<TypeId, HopSlotMap<ComponentId, T>>, but the HopSlotMap is made
     // dyn to avoid the need to downcast each T.
-    map: HashMap<TypeId, Box<dyn Any>>,
+    map: HashMap<TypeId, Box<dyn Any + Send>>,
 }
 
 impl<'a> ComponentStorage {
@@ -19,7 +19,7 @@ impl<'a> ComponentStorage {
         }
     }
 
-    pub fn register<T: 'static>(&mut self) {
+    pub fn register<T: 'static + Send>(&mut self) {
         if !self.map.contains_key(&TypeId::of::<T>()) {
             self.map.insert(
                 TypeId::of::<T>(),
@@ -28,7 +28,7 @@ impl<'a> ComponentStorage {
         }
     }
 
-    pub fn spawn<T: 'static>(&mut self, component: T) -> ComponentId<T> {
+    pub fn spawn<T: 'static + Send>(&mut self, component: T) -> ComponentId<T> {
         unsafe {
             ComponentId::new(
                 self.map
@@ -40,7 +40,7 @@ impl<'a> ComponentStorage {
         }
     }
 
-    pub fn get_all<T: 'static>(&'a mut self) -> ValuesMut<'a, ComponentKey, T> {
+    pub fn get_all<T: 'static + Send>(&'a mut self) -> ValuesMut<'a, ComponentKey, T> {
         unsafe {
             self.map
                 .get_mut(&TypeId::of::<T>())
@@ -52,7 +52,7 @@ impl<'a> ComponentStorage {
     }
 }
 
-impl<T: 'static> Index<&ComponentId<T>> for ComponentStorage {
+impl<T: 'static + Send> Index<&ComponentId<T>> for ComponentStorage {
     type Output = T;
 
     fn index(&self, index: &ComponentId<T>) -> &Self::Output {
@@ -63,7 +63,7 @@ impl<T: 'static> Index<&ComponentId<T>> for ComponentStorage {
     }
 }
 
-impl<T: 'static> IndexMut<&ComponentId<T>> for ComponentStorage {
+impl<T: 'static + Send> IndexMut<&ComponentId<T>> for ComponentStorage {
     fn index_mut(&mut self, index: &ComponentId<T>) -> &mut Self::Output {
         let sub_storage = unsafe {
             self.map

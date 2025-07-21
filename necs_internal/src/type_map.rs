@@ -8,12 +8,12 @@ pub fn type_from_id<'a, T: 'static + NodeRef>(
     storage: &'a mut Storage,
     id: NodeId,
     _func: &dyn Fn(),
-) -> Box<dyn Any> {
+) -> Box<dyn Any + Send> {
     Box::new(unsafe { T::__build_from_storage(storage, id) })
 }
 
 pub struct TypeMap {
-    map: BTreeMap<TypeId, Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any>>>,
+    map: BTreeMap<TypeId, Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any + Send>>>,
 }
 
 impl TypeMap {
@@ -34,7 +34,7 @@ impl TypeMap {
     pub fn register_trait<T, Trait>(&mut self, f: fn(T) -> Box<Trait>)
     where
         T: NodeRef + 'static,
-        Trait: ?Sized + 'static,
+        Trait: ?Sized + 'static + Send,
     {
         let trait_id = TypeId::of::<Box<Trait>>();
         self.map.insert(
@@ -42,7 +42,7 @@ impl TypeMap {
             Box::new(move |storage, id, _| {
                 let node = unsafe { T::__build_from_storage(storage, id) };
                 let trait_obj = f(node);
-                Box::new(trait_obj) as Box<dyn Any>
+                Box::new(trait_obj) as Box<dyn Any + Send>
             }),
         );
     }
