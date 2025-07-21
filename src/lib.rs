@@ -4,6 +4,7 @@ mod register_traits;
 
 pub use necs_internal::World;
 pub use necs_internal::{Node, NodeId, NodeRef};
+pub use necs_macros::node;
 
 #[cfg(test)]
 mod tests {
