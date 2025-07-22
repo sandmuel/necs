@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use necs::{node, register_with_traits, NodeTrait, World};
+    use necs::{node, register_with_traits, Node, NodeTrait, World};
 
     #[node]
     struct Foo {
@@ -40,7 +40,11 @@ mod tests {
         // And we can access fields based on their names (or just create a getter and
         // setter on the Process trait instead, but registering traits is boring and
         // quite a lot of work, so this is an alternative).
-        println!("{}", node.get("bar").to::<u32>());
+        println!("Process bar: {}", node.get("bar").to::<u32>());
+        // Node trait is registered for all nodes automatically.
+        let mut node = world.get_node_resilient::<dyn Node>(node_id);
+        // And we can access fields with get.
+        println!("Node bar: {}", node.get("bar").to::<u32>());
         // The #[ext] attribute has these fields stored with others of their type
         // for better use of cache where a single field is often needed (such as
         // transforms). Temporarily made this public, but this is an internal function,
