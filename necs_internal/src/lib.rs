@@ -9,7 +9,6 @@ use std::any::TypeId;
 
 mod component;
 pub use component::ComponentId;
-use crate::node::Node;
 
 mod node;
 pub mod storage;

@@ -12,4 +12,4 @@ necs_macros = { path = "necs_macros" }
 
 [workspace]
 resolver = "2"
-members = ["necs_internal", "necs_macros"]
+members = ["necs_internal", "necs_macros", "tests"]
