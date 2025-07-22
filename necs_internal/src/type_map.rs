@@ -23,12 +23,13 @@ impl TypeMap {
         }
     }
 
-    pub fn register<T: 'static + NodeRef + Node>(&mut self) {
+    pub fn register<T: 'static + NodeRef>(&mut self) {
         self.map.insert(
             TypeId::of::<T::RecipeTuple>(),
             Box::new(|storage, id, _| type_from_id::<T>(storage, id, &|| {})),
         );
-        self.register_trait::<T, dyn Node>(|node| Box::new(node) as Box<dyn Node>);
+        // TODO Automatically register Node for every node.
+        //self.register_trait::<T, dyn Node>(|node| Box::new(node) as Box<dyn Node>);
     }
 
     // Register a retriever for trait objects, e.g. Box<dyn Banana>

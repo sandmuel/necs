@@ -31,7 +31,7 @@ impl World {
             storage: Storage::new(),
         }
     }
-    pub fn register_node<T: 'static + NodeRef + Node>(&mut self) {
+    pub fn register_node<T: 'static + NodeRef>(&mut self) {
         println!("Added {:?} to typemap", TypeId::of::<T::RecipeTuple>());
         self.type_map.register::<T>();
         T::__register_node(&mut self.storage);
