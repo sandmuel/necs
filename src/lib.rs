@@ -6,13 +6,13 @@ mod register_traits;
 pub use necs_internal::*;
 
 pub use necs_internal::World;
-pub use necs_internal::{Node, NodeId, NodeRef};
+pub use necs_internal::{NodeTrait, NodeId, NodeRef};
 pub use necs_macros::node;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use necs_internal::Node;
+    use necs_internal::NodeTrait;
     use necs_macros::node;
 
     // TODO: Move test tests to a separate crate to avoid circular dependencies
@@ -25,7 +25,7 @@ mod tests {
         bar: u32,
     }
 
-    trait Process: Node {
+    trait Process: NodeTrait {
         fn process(&self);
     }
 

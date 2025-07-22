@@ -1,7 +1,7 @@
 #![feature(downcast_unchecked)]
 #![feature(tuple_trait)]
 
-pub use crate::node::{Field, Node, NodeBuilder, NodeId, NodeRef};
+pub use crate::node::{Field, NodeTrait, NodeBuilder, NodeId, NodeRef};
 use crate::storage::Storage;
 use crate::type_map::TypeMap;
 use slotmap::{DefaultKey, HopSlotMap};
@@ -51,7 +51,7 @@ impl World {
     ///
     /// # Safety
     /// The node associated with the given [NodeId] must be of type T.
-    pub fn get_node_resilient<T: 'static + Node + ?Sized>(&mut self, id: NodeId) -> Box<T> {
+    pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&mut self, id: NodeId) -> Box<T> {
         // The safety of this entirely depends on everything else not having issues.
         // TODO fix this. node_type is currently the RecipeTuple rather than the actual
         // node type.

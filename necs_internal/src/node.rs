@@ -51,6 +51,6 @@ pub trait NodeRef: Send + Sync {
     fn __register_node(storage: &mut Storage);
 }
 
-pub trait Node: Send + Sync {
+pub trait NodeTrait: Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
