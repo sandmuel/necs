@@ -13,7 +13,10 @@ pub fn type_from_id<'a, T: 'static + NodeRef>(
 }
 
 pub struct TypeMap {
-    map: BTreeMap<TypeId, Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any + Send> + Send + Sync>>,
+    map: BTreeMap<
+        TypeId,
+        Box<dyn FnMut(&mut Storage, NodeId, &dyn Fn()) -> Box<dyn Any + Send> + Send + Sync>,
+    >,
 }
 
 impl TypeMap {
@@ -48,10 +51,14 @@ impl TypeMap {
         );
     }
 
-    /// Fetches a node based on only [NodeId].
+    /// Fetches a node based on only [`NodeId`].
     /// # Safety
-    /// The node associated with the given [NodeId] must be of type [T].
-    pub unsafe fn get_node<T: 'static + Send + Sync>(&mut self, storage: &mut Storage, id: NodeId) -> T {
+    /// The node associated with the given [`NodeId`] must be of type [`T`].
+    pub unsafe fn get_node<T: 'static + Send + Sync>(
+        &mut self,
+        storage: &mut Storage,
+        id: NodeId,
+    ) -> T {
         let any = self
             .map
             .get_mut(&TypeId::of::<T>())

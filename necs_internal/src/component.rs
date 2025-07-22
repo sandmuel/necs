@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 /// Key to a specific component.
 pub(crate) type ComponentKey = DefaultKey;
 
-/// Wrapper around [ComponentKey], but with [T] included to make downcasting
+/// Wrapper around [`ComponentKey`], but with [`T`] included to make downcasting
 /// straightforward.
 pub struct ComponentId<T> {
     __type: PhantomData<T>,

@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use necs::{node, register_with_traits, Node, NodeTrait, World};
+    use necs::{Node, NodeTrait, World, node, register_with_traits};
 
     #[node]
     struct Foo {
@@ -45,12 +45,5 @@ mod tests {
         let mut node = world.get_node_resilient::<dyn Node>(node_id);
         // And we can access fields with get.
         println!("Node bar: {}", node.get("bar").to::<u32>());
-        // The #[ext] attribute has these fields stored with others of their type
-        // for better use of cache where a single field is often needed (such as
-        // transforms). Temporarily made this public, but this is an internal function,
-        // and I do not really have any features in this area at the moment.
-        for component in world.storage.components.get_all::<u32>() {
-            println!("{}", component);
-        }
     }
 }

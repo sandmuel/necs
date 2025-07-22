@@ -1,15 +1,15 @@
 #![feature(downcast_unchecked)]
 #![feature(tuple_trait)]
 
-pub use crate::node::{Field, NodeTrait, NodeBuilder, NodeId, NodeRef};
+pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::storage::Storage;
 use crate::type_map::TypeMap;
 use slotmap::{DefaultKey, HopSlotMap};
 use std::any::TypeId;
 
 mod component;
-pub use component::ComponentId;
 pub use crate::node::Node;
+pub use component::ComponentId;
 
 mod node;
 pub mod storage;
@@ -17,10 +17,11 @@ mod type_map;
 
 pub type SubStorage<T> = HopSlotMap<DefaultKey, T>;
 
+/// Storage for all nodes, related metadata, and functions.
 pub struct World {
     // Maps type ids to types, allowing us to work on Nodes without knowing their types.
     pub type_map: TypeMap,
-    pub storage: Storage,
+    storage: Storage,
     // TODO: Keep track of borrowed components and nodes.
 }
 
@@ -48,11 +49,11 @@ impl World {
     }
     /// Gets a node of type T.
     ///
-    /// This is similar to `get_node`, but it doesn't require T to implement
+    /// This is similar to [`get_node`](World::get_node), but it doesn't require T to implement
     /// NodeRef.
     ///
     /// # Safety
-    /// The node associated with the given [NodeId] must be of type T.
+    /// The node associated with the given [`NodeId`] must be of type T.
     pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&mut self, id: NodeId) -> Box<T> {
         // The safety of this entirely depends on everything else not having issues.
         // TODO fix this. node_type is currently the RecipeTuple rather than the actual

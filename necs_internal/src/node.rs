@@ -3,6 +3,9 @@ use slotmap::DefaultKey;
 use std::any::{Any, TypeId, type_name};
 use std::marker::Tuple;
 
+/// Used with [`get_node`](crate::World::get_node) or
+/// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
+/// stored by [`World`](crate::World).
 #[derive(Debug, Copy, Clone)]
 pub struct NodeId {
     pub node_type: TypeId,
@@ -24,11 +27,11 @@ impl dyn Field {
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
 pub trait NodeBuilder {
-    /// The implementation of [NodeRef] associated with this implementation of
-    /// [NodeBuilder].
+    /// The implementation of [`NodeRef`] associated with this implementation of
+    /// [`NodeBuilder`].
     type AsNodeRef: 'static + NodeRef;
 
-    /// Moves all fields to a given [Storage].
+    /// Moves all fields to a given [`Storage`].
     /// # Safety
     /// Do *anything* wrong, and you could cause panics, undefined behavior, and
     /// more! Good luck.
@@ -40,7 +43,7 @@ pub trait NodeBuilder {
 pub trait NodeRef: Send + Sync {
     type RecipeTuple: Tuple;
 
-    /// Assembles a [NodeRef] from fields stored in the given [Storage].
+    /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
     /// # Safety
     /// Do *anything* wrong, and you could cause panics, undefined behavior, and
     /// more! Good luck.
@@ -51,11 +54,29 @@ pub trait NodeRef: Send + Sync {
     fn __register_node(storage: &mut Storage);
 }
 
+/// Implement this on any trait that should be compatible with
+/// [`get_node_resilient`](crate::World::get_node_resilient).
 pub trait NodeTrait: Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
 
-/// A [NodeTrait] for every node.
+/// A subtrait of [`NodeTrait`] that is automatically implemented and registered
+/// for every node.
+/// ```ignore
+/// #[node]
+/// struct MyNode {
+///     my_field: u32,
+/// }
+///
+/// // Register our node.
+/// world.register_node::<MyNode>();
+///
+/// // Now we can retrieve it as a dyn Node.
+/// let mut node = world.get_node_resilient::<dyn Node>();
+///
+/// // And we can access fields using get() since Node is a subtrait of NodeTrait.
+/// println!("my_field: {}", node.get("my_field").to::<u32>());
+/// ```
 pub trait Node: NodeTrait {}
 
 impl<T> Node for T where T: NodeTrait {}
