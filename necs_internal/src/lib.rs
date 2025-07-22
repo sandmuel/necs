@@ -9,6 +9,8 @@ use std::any::TypeId;
 
 mod component;
 pub use component::ComponentId;
+use crate::node::Node;
+
 mod node;
 pub mod storage;
 mod type_map;
@@ -29,7 +31,7 @@ impl World {
             storage: Storage::new(),
         }
     }
-    pub fn register_node<T: 'static + NodeRef>(&mut self) {
+    pub fn register_node<T: 'static + NodeRef + Node>(&mut self) {
         println!("Added {:?} to typemap", TypeId::of::<T::RecipeTuple>());
         self.type_map.register::<T>();
         T::__register_node(&mut self.storage);

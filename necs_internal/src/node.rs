@@ -54,3 +54,8 @@ pub trait NodeRef: Send + Sync {
 pub trait NodeTrait: Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
+
+/// A [NodeTrait] for every node.
+pub trait Node: NodeTrait {}
+
+impl<T> Node for T where T: NodeTrait {}
