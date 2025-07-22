@@ -318,7 +318,7 @@ impl ToTokens for GeneratedNodeRef {
                 #(#struct_fields)*
             }
 
-            impl #generics ::necs::Node for #ident #generics {
+            impl #generics ::necs::NodeTrait for #ident #generics {
                 fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
                     match field_name {
                         #(#get_match_arms)*
