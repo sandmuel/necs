@@ -139,10 +139,11 @@ impl ToTokens for GeneratedNodeBuilder {
 }
 
 struct FieldInfo {
+    attrs: Vec<Attribute>,
+    is_ext: bool,
+    vis: Visibility,
     ident: syn::Ident,
     ty: syn::Type,
-    is_ext: bool,
-    attrs: Vec<Attribute>,
 }
 
 struct GeneratedNodeRef {
@@ -210,11 +211,13 @@ impl Parse for GeneratedNodeRef {
 
                     // Safe because fields are named.
                     let ident = field.ident.unwrap();
+                    let vis = field.vis;
                     field_infos.push(FieldInfo {
+                        attrs,
+                        is_ext,
+                        vis,
                         ident,
                         ty,
-                        is_ext,
-                        attrs,
                     });
                 }
             }
@@ -258,11 +261,11 @@ impl ToTokens for GeneratedNodeRef {
         // Emit struct fields
         let struct_fields = fields.iter().map(|field| {
             let FieldInfo {
-                ident, ty, attrs, ..
+                attrs, vis, ident, ty, ..
             } = field;
             quote! {
                 #(#attrs)*
-                #ident: #ty,
+                #vis #ident: #ty,
             }
         });
 
