@@ -125,6 +125,7 @@ impl ToTokens for GeneratedNodeBuilder {
             #(#attrs)*
             #vis struct #ident #generics #struct_fields
 
+            #[doc(hidden)]
             impl ::necs::NodeBuilder for #ident #generics {
                 type AsNodeRef = #node_ref<'static>;
 
@@ -318,6 +319,7 @@ impl ToTokens for GeneratedNodeRef {
                 #(#struct_fields)*
             }
 
+            #[doc(hidden)]
             impl #generics ::necs::NodeTrait for #ident #generics {
                 fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
                     match field_name {
@@ -327,6 +329,7 @@ impl ToTokens for GeneratedNodeRef {
                 }
             }
 
+            #[doc(hidden)]
             impl #generics ::necs::NodeRef for #ident #generics {
                 type RecipeTuple = #recipe_tuple;
 
