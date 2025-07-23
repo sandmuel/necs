@@ -45,5 +45,8 @@ mod tests {
         let mut node = world.get_node_resilient::<dyn Node>(node_id);
         // And we can access fields with get.
         println!("Node bar: {}", node.get("bar").to::<u32>());
+        for _ in world.get_nodes::<Foo>() {
+            println!("Found a Foo");
+        }
     }
 }

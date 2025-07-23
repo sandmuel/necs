@@ -25,7 +25,7 @@ pub struct World {
     // TODO: Keep track of borrowed components and nodes.
 }
 
-impl World {
+impl<'a> World {
     pub fn new() -> Self {
         Self {
             type_map: TypeMap::new(),
@@ -43,14 +43,34 @@ impl World {
             id
         }
     }
-    pub fn get_node<T: 'static + NodeRef>(&mut self, id: NodeId) -> T {
+    pub fn get_node<T: 'a + NodeRef>(&'a mut self, id: NodeId) -> T {
         // The safety of this entirely depends on everything else not having issues.
         unsafe { T::__build_from_storage(&mut self.storage, id) }
     }
+    pub fn get_nodes<T: 'static + NodeRef>(&'a mut self) -> Vec<T> {
+        let ids: Vec<NodeId> = self.storage.nodes[TypeId::of::<T::RecipeTuple>()]
+            .downcast_mut::<SubStorage<T::RecipeTuple>>()
+            // TODO give this a proper error message.
+            .unwrap()
+            .keys()
+            .map(|id| NodeId {
+                node_type: TypeId::of::<T::RecipeTuple>(),
+                instance: id,
+            })
+            .collect();
+
+        let mut nodes = Vec::with_capacity(ids.len());
+
+        for id in ids {
+            unsafe { nodes.push(T::__build_from_storage(&mut self.storage, id)) }
+        }
+
+        nodes
+    }
     /// Gets a node of type T.
     ///
-    /// This is similar to [`get_node`](World::get_node), but it doesn't require T to implement
-    /// NodeRef.
+    /// This is similar to [`get_node`](World::get_node), but it doesn't require
+    /// T to implement NodeRef.
     ///
     /// # Safety
     /// The node associated with the given [`NodeId`] must be of type T.
