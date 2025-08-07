@@ -1,7 +1,5 @@
 #![feature(downcast_unchecked)]
 
-mod register_traits;
-
 pub use necs_internal::World;
 #[doc(hidden)]
 pub use necs_internal::*;

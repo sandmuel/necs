@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct TypeMap {
     map: HashMap<
         TypeId,
-        HashMap<TypeId, Box<dyn Fn(&mut Storage, NodeId) -> Box<dyn Any + Send + Sync>>>,
+        HashMap<TypeId, Box<dyn Fn(&mut Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>>,
     >,
 }
 
