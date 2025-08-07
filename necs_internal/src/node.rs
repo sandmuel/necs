@@ -40,7 +40,7 @@ pub trait NodeBuilder {
 
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
-pub trait NodeRef: Node + Send + Sync {
+pub trait NodeRef: NodeTrait + Send + Sync {
     type RecipeTuple: Tuple;
 
     /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
