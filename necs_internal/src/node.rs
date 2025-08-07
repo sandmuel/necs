@@ -54,9 +54,9 @@ pub trait NodeRef: Send + Sync {
     fn __register_node(storage: &mut Storage);
 }
 
-/// Implement this on any trait that should be compatible with
+/// Require this on any trait that should be compatible with
 /// [`get_node_resilient`](crate::World::get_node_resilient).
-pub trait NodeTrait: Send + Sync {
+pub trait NodeTrait: NodeRef + Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
 
