@@ -2,12 +2,14 @@
 
 #[cfg(test)]
 mod tests {
-    use necs::{Node, NodeTrait, World, node, register_with_traits};
+    use necs::{Node, NodeTrait, World, node};
 
     #[node]
     struct Foo {
         pub x: u64,
         y: i32,
+        //#[ext] // TODO: fix multiple ext fields causes double mut borrow.
+        z: i32,
         #[ext]
         bar: u32,
     }
@@ -25,10 +27,17 @@ mod tests {
     #[test]
     fn it_works() {
         let mut world = World::new();
-        register_with_traits!(world, Foo<'_>, [Process]);
+        world.register_node::<Foo>();
+        world.node_map.register::<Foo, dyn Process>(|x| Box::new(x));
 
-        let node_id = world.spawn_node(FooBuilder { x: 8, y: 3, bar: 2 });
+        let node_id = world.spawn_node(FooBuilder {
+            x: 8,
+            y: 3,
+            z: 2,
+            bar: 2,
+        });
         // The node can be retrieved as a concrete type.
+        let _node_1: Foo = world.get_node::<Foo>(node_id);
         let node: Foo = world.get_node::<Foo>(node_id);
         println!("node.x: {} node.bar: {}", node.x, node.bar);
         println!("node.process():");

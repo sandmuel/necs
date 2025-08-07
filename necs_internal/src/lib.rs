@@ -2,8 +2,8 @@
 #![feature(tuple_trait)]
 
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
+use crate::node_map::TypeMap;
 use crate::storage::Storage;
-use crate::type_map::TypeMap;
 use slotmap::{DefaultKey, HopSlotMap};
 use std::any::TypeId;
 
@@ -12,15 +12,15 @@ pub use crate::node::Node;
 pub use component::ComponentId;
 
 mod node;
+mod node_map;
 pub mod storage;
-mod type_map;
 
 pub type SubStorage<T> = HopSlotMap<DefaultKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
 pub struct World {
     // Maps type ids to types, allowing us to work on Nodes without knowing their types.
-    pub type_map: TypeMap,
+    pub node_map: TypeMap,
     storage: Storage,
     // TODO: Keep track of borrowed components and nodes.
 }
@@ -28,13 +28,13 @@ pub struct World {
 impl<'a> World {
     pub fn new() -> Self {
         Self {
-            type_map: TypeMap::new(),
+            node_map: TypeMap::new(),
             storage: Storage::new(),
         }
     }
     pub fn register_node<T: 'static + NodeRef + Node>(&mut self) {
-        println!("Added {:?} to typemap", TypeId::of::<T::RecipeTuple>());
-        self.type_map.register::<T>();
+        println!("Added {:?} to type map", TypeId::of::<T::RecipeTuple>());
+        self.node_map.register::<T, dyn Node>(|x| Box::new(x));
         T::__register_node(&mut self.storage);
     }
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
@@ -78,6 +78,6 @@ impl<'a> World {
         // The safety of this entirely depends on everything else not having issues.
         // TODO fix this. node_type is currently the RecipeTuple rather than the actual
         // node type.
-        unsafe { self.type_map.get_node::<Box<T>>(&mut self.storage, id) }
+        self.node_map.get_node::<T>(&mut self.storage, id)
     }
 }

@@ -261,7 +261,11 @@ impl ToTokens for GeneratedNodeRef {
         // Emit struct fields
         let struct_fields = fields.iter().map(|field| {
             let FieldInfo {
-                attrs, vis, ident, ty, ..
+                attrs,
+                vis,
+                ident,
+                ty,
+                ..
             } = field;
             quote! {
                 #(#attrs)*
