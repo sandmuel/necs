@@ -32,7 +32,7 @@ impl<'a> World {
             storage: Storage::new(),
         }
     }
-    pub fn register_node<T: 'static + NodeRef + Node>(&mut self) {
+    pub fn register_node<T: 'static + NodeRef>(&mut self) {
         println!("Added {:?} to type map", TypeId::of::<T::RecipeTuple>());
         self.node_map.register::<T, dyn Node>(|x| Box::new(x));
         T::__register_node(&mut self.storage);

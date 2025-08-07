@@ -40,7 +40,7 @@ pub trait NodeBuilder {
 
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
-pub trait NodeRef: Send + Sync {
+pub trait NodeRef: Node + Send + Sync {
     type RecipeTuple: Tuple;
 
     /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
@@ -56,7 +56,7 @@ pub trait NodeRef: Send + Sync {
 
 /// Require this on any trait that should be compatible with
 /// [`get_node_resilient`](crate::World::get_node_resilient).
-pub trait NodeTrait: NodeRef + Send + Sync {
+pub trait NodeTrait: Send + Sync {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
 
