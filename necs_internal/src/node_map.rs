@@ -7,7 +7,10 @@ use std::collections::HashMap;
 pub struct TypeMap {
     map: HashMap<
         TypeId,
-        HashMap<TypeId, Box<dyn Fn(&mut Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>>,
+        HashMap<
+            TypeId,
+            Box<dyn Fn(&mut Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>,
+        >,
     >,
 }
 
@@ -18,7 +21,8 @@ impl TypeMap {
         }
     }
 
-    /// Registers a type `T` that can be converted to `Trait` using `to_trait_obj`.
+    /// Registers a type `T` that can be converted to `Trait` using
+    /// `to_trait_obj`.
     pub fn register<T, Trait>(&mut self, to_trait_obj: fn(T) -> Box<Trait>)
     where
         T: 'static + NodeRef + Node,
@@ -45,9 +49,11 @@ impl TypeMap {
             .get(&TypeId::of::<Trait>())
             .expect(&format!("Trait {} not registered", type_name::<Trait>()));
 
-        let factory = type_map
-            .get(&id.node_type)
-            .expect(&format!("Type {:?} not registered for Trait {}", id.node_type, type_name::<Trait>()));
+        let factory = type_map.get(&id.node_type).expect(&format!(
+            "Type {:?} not registered for Trait {}",
+            id.node_type,
+            type_name::<Trait>()
+        ));
 
         let trait_obj = factory(storage, id);
 

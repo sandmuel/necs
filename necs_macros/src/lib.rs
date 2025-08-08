@@ -83,7 +83,7 @@ impl ToTokens for GeneratedNodeBuilder {
                     { #(#fields,)* }
                 }
             }
-            Fields::Unit => quote! {},
+            Fields::Unit => quote! {;},
             _ => unreachable!("struct fields should not be unnamed"),
         };
 
@@ -121,13 +121,19 @@ impl ToTokens for GeneratedNodeBuilder {
             _ => unreachable!("struct fields should not be unnamed"),
         };
 
+        // Add the <'static> lifetime annotation if the struct has at least one field.
+        let as_node_ref = match &self.fields {
+            Fields::Named(fields) if !fields.named.is_empty() => quote!(#node_ref<'static>),
+            _ => quote!(#node_ref),
+        };
+
         quote! {
             #(#attrs)*
             #vis struct #ident #generics #struct_fields
 
             #[doc(hidden)]
             impl ::necs::NodeBuilder for #ident #generics {
-                type AsNodeRef = #node_ref<'static>;
+                type AsNodeRef = #as_node_ref;
 
                 unsafe fn __move_to_storage(self, storage: &mut ::necs::storage::Storage) -> ::necs::NodeId {
                     #field_assignments
@@ -165,20 +171,6 @@ impl Parse for GeneratedNodeRef {
         let ident = input.ident;
         let mut generics = input.generics;
 
-        if !generics
-            .params
-            .iter()
-            .any(|p| matches!(p, syn::GenericParam::Lifetime(l) if l.lifetime.ident == "node"))
-        {
-            generics.params.insert(0, syn::parse_quote!('node));
-
-            // Ensure the angled brackets.
-            if generics.lt_token.is_none() {
-                generics.lt_token = Some(Default::default());
-                generics.gt_token = Some(Default::default());
-            }
-        }
-
         let data = match input.data {
             Data::Struct(data) => data,
             _ => {
@@ -188,6 +180,28 @@ impl Parse for GeneratedNodeRef {
                 ));
             }
         };
+
+        // Only inject the node lifetime if there is at least one field.
+        let empty = match &data.fields {
+            Fields::Named(named) => named.named.is_empty(),
+            Fields::Unit => true,
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    err_input,
+                    "struct fields must be named",
+                ));
+            }
+        };
+
+        if !empty {
+            generics.params.insert(0, syn::parse_quote!('node));
+
+            // Ensure the angled brackets.
+            if generics.lt_token.is_none() {
+                generics.lt_token = Some(Default::default());
+                generics.gt_token = Some(Default::default());
+            }
+        }
 
         let mut field_infos = Vec::new();
         let mut tuple_types = Vec::new();
@@ -369,6 +383,25 @@ impl ToTokens for GeneratedNodeRef {
     }
 }
 
+/// This macro generates various types and traits used by necs to manage nodes.
+///
+/// # Example
+/// ```ignore
+/// #[node]
+/// pub struct MyNode {
+///     // This field has no attributes, and is stored together with the rest of
+///     // MyNode's data.
+///     foo: u32,
+///     // This field is external, it is stored in memory alongside other fields of
+///     // the same type, rather than with the rest of MyNode, useful for fields
+///     // which are usually accessed individually.
+///     #[ext]
+///     transform: Transform,
+/// }
+/// ```
+///
+/// This will generate additional builder and reference code associated with
+/// `MyNode` to enable advanced functionality.
 #[proc_macro_attribute]
 pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let node_builder = item.clone();

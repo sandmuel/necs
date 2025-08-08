@@ -14,6 +14,12 @@ mod tests {
         bar: u32,
     }
 
+    #[node]
+    struct Bar {}
+
+    #[node]
+    struct Baz;
+
     trait Process: NodeTrait {
         fn process(&self);
     }
