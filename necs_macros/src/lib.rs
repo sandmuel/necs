@@ -345,7 +345,7 @@ impl ToTokens for GeneratedNodeRef {
                 fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
                     match field_name {
                         #(#get_match_arms)*
-                        _ => panic!("{} does not exist on {}", field_name, ::std::any::type_name::<Self>()),
+                        _ => panic!("field {} does not exist on {}", field_name, ::std::any::type_name::<Self>()),
                     }
                 }
             }

@@ -47,17 +47,16 @@ impl TypeMap {
         let type_map = self
             .map
             .get(&TypeId::of::<Trait>())
-            .expect(&format!("Trait {} not registered", type_name::<Trait>()));
+            .expect(&format!("trait {} not registered", type_name::<Trait>()));
 
         let factory = type_map.get(&id.node_type).expect(&format!(
-            "Type {:?} not registered for Trait {}",
+            "type {:?} not registered for Trait {}",
             id.node_type,
             type_name::<Trait>()
         ));
 
         let trait_obj = factory(storage, id);
 
-        // It's a Box<Box<Trait>> — so we unwrap it
         *trait_obj
             .downcast::<Box<Trait>>()
             .expect("Failed to downcast node to expected trait object")
