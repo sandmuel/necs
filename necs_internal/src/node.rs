@@ -6,7 +6,7 @@ use std::marker::Tuple;
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
 /// stored by [`World`](crate::World).
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NodeId {
     pub node_type: TypeId,
     pub instance: DefaultKey,
