@@ -31,7 +31,7 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
+    fn register_spawn_retrieve() {
         let mut world = World::new();
         world.register_node::<Foo>();
         world.node_map.register::<Foo, dyn Process>(|x| Box::new(x));

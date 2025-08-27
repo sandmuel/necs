@@ -48,16 +48,7 @@ impl<'a> World {
         unsafe { T::__build_from_storage(&mut self.storage, id) }
     }
     pub fn get_nodes<T: 'static + NodeRef>(&'a mut self) -> Vec<T> {
-        let ids: Vec<NodeId> = self.storage.nodes[TypeId::of::<T::RecipeTuple>()]
-            .downcast_mut::<SubStorage<T::RecipeTuple>>()
-            // TODO give this a proper error message.
-            .unwrap()
-            .keys()
-            .map(|id| NodeId {
-                node_type: TypeId::of::<T::RecipeTuple>(),
-                instance: id,
-            })
-            .collect();
+        let ids = self.get_node_ids::<T>();
 
         let mut nodes = Vec::with_capacity(ids.len());
 
@@ -67,6 +58,20 @@ impl<'a> World {
 
         nodes
     }
+
+    pub fn get_node_ids<T: 'static + NodeRef>(&'a mut self) -> Vec<NodeId> {
+        self.storage.nodes[TypeId::of::<T::RecipeTuple>()]
+            .downcast_mut::<SubStorage<T::RecipeTuple>>()
+            // TODO give this a proper error message.
+            .unwrap()
+            .keys()
+            .map(|id| NodeId {
+                node_type: TypeId::of::<T::RecipeTuple>(),
+                instance: id,
+            })
+            .collect()
+    }
+
     /// Gets a node of type T.
     ///
     /// This is similar to [`get_node`](World::get_node), but it doesn't require
