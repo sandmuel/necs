@@ -1,14 +1,15 @@
-use crate::component::{ComponentId, ComponentKey};
-use slotmap::HopSlotMap;
-use slotmap::hop::ValuesMut;
+use crate::component::ComponentId;
+use crate::storage::map_key::MapKey;
+use slotmap::SparseSecondaryMap;
+use slotmap::sparse_secondary::ValuesMut;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug)]
 pub struct ComponentStorage {
-    // This is always a BTreeMap<TypeId, HopSlotMap<ComponentId, T>>, but the HopSlotMap is made
-    // dyn to avoid the need to downcast each T.
+    // This is always a BTreeMap<TypeId, SparseSecondaryMap<ComponentId, T>>, but the
+    // SparseSecondaryMap is made dyn to avoid the need to downcast each value.
     map: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
@@ -23,29 +24,28 @@ impl<'a> ComponentStorage {
         if !self.map.contains_key(&TypeId::of::<T>()) {
             self.map.insert(
                 TypeId::of::<T>(),
-                Box::new(HopSlotMap::<ComponentKey, T>::new()),
+                Box::new(SparseSecondaryMap::<MapKey, T>::new()),
             );
         }
     }
 
-    pub fn spawn<T: 'static + Send + Sync>(&mut self, component: T) -> ComponentId<T> {
-        unsafe {
-            ComponentId::new(
-                self.map
-                    .get_mut(&TypeId::of::<T>())
-                    .expect("component type should be registered first")
-                    .downcast_mut_unchecked::<HopSlotMap<ComponentKey, T>>()
-                    .insert(component),
-            )
-        }
-    }
-
-    pub fn get_all<T: 'static + Send + Sync>(&'a mut self) -> ValuesMut<'a, ComponentKey, T> {
+    pub fn spawn<T: 'static + Send + Sync>(&mut self, key: MapKey, component: T) -> ComponentId<T> {
         unsafe {
             self.map
                 .get_mut(&TypeId::of::<T>())
-                .expect("component type should be registered first")
-                .downcast_mut_unchecked::<HopSlotMap<ComponentKey, T>>()
+                .expect("the component type should be registered first")
+                .downcast_mut_unchecked::<SparseSecondaryMap<MapKey, T>>()
+                .insert(key, component);
+            ComponentId::new(key)
+        }
+    }
+
+    pub fn get_all<T: 'static + Send + Sync>(&'a mut self) -> ValuesMut<'a, MapKey, T> {
+        unsafe {
+            self.map
+                .get_mut(&TypeId::of::<T>())
+                .expect("the component type should be registered first")
+                .downcast_mut_unchecked::<SparseSecondaryMap<MapKey, T>>()
                 .values_mut()
                 .into_iter()
         }
@@ -57,7 +57,8 @@ impl<T: 'static + Send + Sync> Index<&ComponentId<T>> for ComponentStorage {
 
     fn index(&self, index: &ComponentId<T>) -> &Self::Output {
         let sub_storage = unsafe {
-            self.map[&TypeId::of::<T>()].downcast_ref_unchecked::<HopSlotMap<ComponentKey, T>>()
+            self.map[&TypeId::of::<T>()]
+                .downcast_ref_unchecked::<SparseSecondaryMap<MapKey, T>>()
         };
         &sub_storage[index.key]
     }
@@ -68,8 +69,8 @@ impl<T: 'static + Send + Sync> IndexMut<&ComponentId<T>> for ComponentStorage {
         let sub_storage = unsafe {
             self.map
                 .get_mut(&TypeId::of::<T>())
-                .expect("component type should be registered first")
-                .downcast_mut_unchecked::<HopSlotMap<ComponentKey, T>>()
+                .expect("the component type should be registered first")
+                .downcast_mut_unchecked::<SparseSecondaryMap<MapKey, T>>()
         };
         &mut sub_storage[index.key]
     }

@@ -1,18 +1,15 @@
-use slotmap::DefaultKey;
+use crate::storage::map_key::MapKey;
 use std::marker::PhantomData;
-
-/// Key to a specific component.
-pub(crate) type ComponentKey = DefaultKey;
 
 /// Wrapper around [`ComponentKey`], but with [`T`] included to make downcasting
 /// straightforward.
 pub struct ComponentId<T> {
     __type: PhantomData<T>,
-    pub(crate) key: ComponentKey,
+    pub(crate) key: MapKey,
 }
 
 impl<T> ComponentId<T> {
-    pub fn new(key: ComponentKey) -> Self {
+    pub fn new(key: MapKey) -> Self {
         Self {
             __type: PhantomData::default(),
             key,

@@ -1,11 +1,12 @@
 use crate::NodeId;
-use slotmap::{DefaultKey, HopSlotMap};
+use crate::storage::map_key::MapKey;
+use slotmap::HopSlotMap;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::marker::Tuple;
 use std::ops::{Index, IndexMut};
 
-type SubStorage<T> = HopSlotMap<DefaultKey, T>;
+type SubStorage<T> = HopSlotMap<MapKey, T>;
 
 #[derive(Debug)]
 pub struct NodeStorage {
@@ -19,6 +20,7 @@ impl NodeStorage {
         }
     }
 
+    /// Registers a node type if it does not exist already.
     pub fn register<T: 'static + Send + Sync>(&mut self) {
         if !self.map.contains_key(&TypeId::of::<T>()) {
             self.map
@@ -26,16 +28,20 @@ impl NodeStorage {
         }
     }
 
-    pub fn spawn<T: 'static + Tuple + Send + Sync>(&mut self, node: T) -> NodeId {
+    /// Insert a node and corresponding components into storage.
+    pub fn spawn<T: 'static + Tuple + Send + Sync, F: FnOnce(MapKey) -> T>(
+        &mut self,
+        f: F,
+    ) -> NodeId {
         unsafe {
             NodeId {
                 node_type: TypeId::of::<T>(),
                 instance: self
                     .map
                     .get_mut(&TypeId::of::<T>())
-                    .expect("node type should be registered first")
+                    .expect("the node type should be registered first")
                     .downcast_mut_unchecked::<SubStorage<T>>()
-                    .insert(node),
+                    .insert_with_key(|key| f(key)),
             }
         }
     }

@@ -1,7 +1,7 @@
 use crate::Storage;
-use slotmap::DefaultKey;
 use std::any::{Any, TypeId, type_name};
 use std::marker::Tuple;
+use crate::storage::map_key::MapKey;
 
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
@@ -9,7 +9,7 @@ use std::marker::Tuple;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NodeId {
     pub node_type: TypeId,
-    pub instance: DefaultKey,
+    pub instance: MapKey,
 }
 
 pub trait Field: Any {}

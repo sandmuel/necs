@@ -2,6 +2,7 @@ use crate::storage::component_storage::ComponentStorage;
 use crate::storage::node_storage::NodeStorage;
 
 mod component_storage;
+pub(crate) mod map_key;
 mod node_storage;
 
 #[derive(Debug)]

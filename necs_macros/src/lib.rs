@@ -88,6 +88,7 @@ impl ToTokens for GeneratedNodeBuilder {
         };
 
         // Generate field assignments for __move_to_storage().
+        // TODO: Make sure components have the same DefaultKey as the node.
         let field_assignments = match &self.fields {
             Fields::Named(fields) => {
                 let assignments = fields.named.iter().map(|field| {
@@ -96,7 +97,7 @@ impl ToTokens for GeneratedNodeBuilder {
 
                     if has_ext {
                         quote! {
-                            let #field_name = storage.components.spawn(self.#field_name);
+                            storage.components.spawn(key, self.#field_name);
                         }
                     } else {
                         quote! {
@@ -105,18 +106,26 @@ impl ToTokens for GeneratedNodeBuilder {
                     }
                 });
 
-                let tuple_fields = fields.named.iter().map(|field| {
+                let tuple_fields = fields.named.iter().filter_map(|field| {
                     let field_name = &field.ident;
-                    quote! { #field_name }
+                    let has_ext = field.attrs.iter().any(|attr| attr.path().is_ident("ext"));
+                    
+                    if has_ext {
+                        None
+                    } else {
+                        Some(quote! { #field_name })
+                    }
                 });
 
                 quote! {
-                    #(#assignments)*
-                    storage.nodes.spawn((#(#tuple_fields,)*))
+                    storage.nodes.spawn(|key| {
+                        #(#assignments)*
+                        (#(#tuple_fields,)*)}
+                    )
                 }
             }
             Fields::Unit => quote! {
-                storage.nodes.spawn(())
+                storage.nodes.spawn(|_| {})
             },
             _ => unreachable!("struct fields should not be unnamed"),
         };
@@ -215,7 +224,6 @@ impl Parse for GeneratedNodeRef {
 
                     let ty = if is_ext {
                         let inner = &field.ty;
-                        tuple_types.push(parse_quote!(::necs::ComponentId<#inner>));
                         parse_quote!(&'node mut #inner)
                     } else {
                         let inner = &field.ty;
@@ -287,21 +295,23 @@ impl ToTokens for GeneratedNodeRef {
             }
         });
 
-        // Field extraction logic
         let mut field_extractions = Vec::new();
         let mut component_registrations = Vec::new();
-        let mut idx = 0;
+        let mut tuple_idx = 0;
 
         for field in fields {
-            let tuple_idx = syn::Index::from(idx);
             let name = &field.ident;
 
             if field.is_ext {
-                field_extractions.push(quote! {
-                    let #name = &mut storage.components[&recipe_tuple.#tuple_idx];
-                });
+                // For #ext fields, access them using the node's instance id.
+                if let syn::Type::Reference(type_ref) = &field.ty {
+                    let inner_type = &type_ref.elem;
+                    field_extractions.push(quote! {
+                        let #name = &mut storage.components[&::necs::ComponentId::<#inner_type>::new(id.instance)];
+                    });
+                }
 
-                // Get the original type (without the reference)
+                // Get the original type. (without the reference)
                 if let syn::Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     component_registrations.push(quote! {
@@ -309,11 +319,12 @@ impl ToTokens for GeneratedNodeRef {
                     });
                 }
             } else {
+                let idx = syn::Index::from(tuple_idx);
                 field_extractions.push(quote! {
-                    let #name = &mut recipe_tuple.#tuple_idx;
+                    let #name = &mut recipe_tuple.#idx;
                 });
+                tuple_idx += 1;
             }
-            idx += 1;
         }
 
         let field_names = fields.iter().map(|f| &f.ident);
