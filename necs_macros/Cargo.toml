@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-necs_internal = { path = "../necs_internal" }
 quote = "1.0.40"
 syn = "2.0.104"
 proc-macro2 = "1.0.95"

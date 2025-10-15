@@ -57,8 +57,7 @@ impl<T: 'static + Send + Sync> Index<&ComponentId<T>> for ComponentStorage {
 
     fn index(&self, index: &ComponentId<T>) -> &Self::Output {
         let sub_storage = unsafe {
-            self.map[&TypeId::of::<T>()]
-                .downcast_ref_unchecked::<SparseSecondaryMap<MapKey, T>>()
+            self.map[&TypeId::of::<T>()].downcast_ref_unchecked::<SparseSecondaryMap<MapKey, T>>()
         };
         &sub_storage[index.key]
     }

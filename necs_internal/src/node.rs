@@ -1,26 +1,29 @@
 use crate::Storage;
-use std::any::{Any, TypeId, type_name};
-use std::marker::Tuple;
 use crate::storage::map_key::MapKey;
+use std::any::{Any, type_name};
+use std::marker::Tuple;
+
+/// A [`u16`] corresponding to a node's type.
+pub type NodeType = u16;
 
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
 /// stored by [`World`](crate::World).
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NodeId {
-    pub node_type: TypeId,
+    pub node_type: NodeType,
     pub instance: MapKey,
 }
 
 pub trait Field: Any {}
 
-impl<T: 'static + Any> Field for T {}
+impl<T: 'static> Field for T {}
 
-impl<'a> dyn Field {
-    pub fn to<T: 'static>(&'a mut self) -> &'a mut T {
+impl dyn Field {
+    pub fn to<T: 'static>(&mut self) -> &mut T {
         (self as &mut dyn Any)
             .downcast_mut::<T>()
-            .expect(&format!("invalid downcast to {}", type_name::<T>()))
+            .unwrap_or_else(|| panic!("invalid downcast to {}", type_name::<T>()))
     }
 }
 
@@ -29,25 +32,26 @@ impl<'a> dyn Field {
 pub trait NodeBuilder {
     /// The implementation of [`NodeRef`] associated with this implementation of
     /// [`NodeBuilder`].
-    type AsNodeRef: 'static + NodeRef;
+    type AsNodeRef: NodeRef;
 
     /// Moves all fields to a given [`Storage`].
-    /// # Safety
-    /// Do *anything* wrong, and you could cause panics, undefined behavior, and
-    /// more! Good luck.
-    unsafe fn __move_to_storage(self, storage: &mut Storage) -> NodeId;
+    fn __move_to_storage(self, storage: &mut Storage) -> NodeId;
 }
 
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
-pub trait NodeRef: NodeTrait + Send + Sync {
-    type RecipeTuple: Tuple;
+pub trait NodeRef: 'static + NodeTrait + Send + Sync {
+    type Instance<'node>: Node;
+    type RecipeTuple: Tuple + Send + Sync;
 
     /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
     /// # Safety
-    /// Do *anything* wrong, and you could cause panics, undefined behavior, and
-    /// more! Good luck.
-    unsafe fn __build_from_storage(storage: &mut Storage, id: NodeId) -> Self;
+    /// The safety of this depends on the key-value pairs always being correct
+    /// to ensure the safety of unchecked downcasts.
+    unsafe fn __build_from_storage<'node>(
+        storage: &'node mut Storage,
+        id: NodeId,
+    ) -> Self::Instance<'node>;
 
     /// Registers this node to node storage and all fields with the `#[ext]`
     /// attribute to component storage.

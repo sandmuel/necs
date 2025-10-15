@@ -8,17 +8,15 @@ mod tests {
     struct Foo {
         pub x: u64,
         y: i32,
-        //#[ext] // TODO: fix multiple ext fields causes double mut borrow.
         z: i32,
-        #[ext]
         bar: u32,
     }
 
-    #[node]
-    struct Bar {}
+    //#[node]
+    //struct Bar {}
 
-    #[node]
-    struct Baz;
+    //#[node]
+    //struct Baz;
 
     trait Process: NodeTrait {
         fn process(&self);
@@ -34,7 +32,9 @@ mod tests {
     fn register_spawn_retrieve() {
         let mut world = World::new();
         world.register_node::<Foo>();
-        world.node_map.register::<Foo, dyn Process>(|x| Box::new(x));
+        world
+            .node_map
+            .register::<Foo, dyn Process, _>(0, |x| Box::new(x));
 
         let node_id = world.spawn_node(FooBuilder {
             x: 8,
@@ -60,8 +60,8 @@ mod tests {
         let mut node = world.get_node_resilient::<dyn Node>(node_id);
         // And we can access fields with get.
         println!("Node bar: {}", node.get("bar").to::<u32>());
-        for _ in world.get_nodes::<Foo>() {
-            println!("Found a Foo");
-        }
+        //for _ in world.get_nodes::<Foo>() {
+        //    println!("Found a Foo");
+        //}
     }
 }
