@@ -1,8 +1,76 @@
+mod utils;
+use utils::{only_generic_idents, with_lifetime};
+
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::{Attribute, Data, DeriveInput, Fields, Generics, TypeTuple, Visibility, parse_quote};
+use syn::{
+    Attribute, Data, DeriveInput, Fields, GenericArgument, Generics, Lifetime, PathArguments,
+    Result, Type, TypeReference, TypeTuple, Visibility, parse_quote,
+};
+
+fn type_uses_world(ty: &Type) -> bool {
+    match ty {
+        // Direct reference: & 'world T or &mut 'world T
+        Type::Reference(TypeReference {
+            lifetime: Some(lifetime),
+            ..
+        }) => lifetime.ident == "world",
+
+        // Check inside generic types like Option<&'world T>
+        Type::Path(type_path) => type_path
+            .path
+            .segments
+            .iter()
+            .any(|seg| match &seg.arguments {
+                PathArguments::AngleBracketed(ab) => ab.args.iter().any(|arg| match arg {
+                    GenericArgument::Type(t) => type_uses_world(t),
+                    GenericArgument::Lifetime(Lifetime { ident, .. }) => ident == "world",
+                    _ => false,
+                }),
+                _ => false,
+            }),
+
+        // You can extend to arrays, tuples, etc., if needed
+        _ => false,
+    }
+}
+
+// Insert 'world if the struct uses it.
+fn maybe_insert_generic(
+    err_input: &DeriveInput,
+    fields: Fields,
+    generics: &mut Generics,
+) -> Result<(bool, Fields)> {
+    // Only inject the node lifetime if there is at least one field.
+    let (empty, fields) = match fields {
+        Fields::Named(fields) => (fields.named.is_empty(), Fields::Named(fields)),
+        Fields::Unit => (true, Fields::Unit),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                err_input,
+                "struct fields must be named",
+            ));
+        }
+    };
+
+    if !empty {
+        let uses_world = fields.iter().any(|field| type_uses_world(&field.ty));
+
+        if uses_world {
+            generics.params.insert(0, syn::parse_quote!('world));
+
+            // Ensure the angled brackets.
+            if generics.lt_token.is_none() {
+                generics.lt_token = Some(Default::default());
+                generics.gt_token = Some(Default::default());
+            }
+        }
+    }
+
+    Ok((empty, fields))
+}
 
 struct GeneratedNodeBuilder {
     attrs: Vec<Attribute>,
@@ -14,34 +82,26 @@ struct GeneratedNodeBuilder {
 }
 
 impl Parse for GeneratedNodeBuilder {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let input: DeriveInput = input.parse()?;
         let err_input = input.clone();
 
         let attrs = input.attrs;
         let vis = input.vis;
         let ident = format_ident!("{}Builder", input.ident);
-        let generics = input.generics;
+        let mut generics = input.generics;
         let node_ref = input.ident;
 
         let fields = match input.data {
-            Data::Struct(data) => match data.fields {
-                Fields::Named(fields) => Fields::Named(fields),
-                Fields::Unit => Fields::Unit,
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        err_input,
-                        "struct fields must be named",
-                    ));
-                }
-            },
+            Data::Struct(data) => maybe_insert_generic(&err_input, data.fields, &mut generics),
             _ => {
                 return Err(syn::Error::new_spanned(
                     err_input,
                     "only structs are supported",
                 ));
             }
-        };
+        }?
+        .1;
 
         Ok(Self {
             attrs,
@@ -60,6 +120,8 @@ impl ToTokens for GeneratedNodeBuilder {
         let vis = &self.vis;
         let ident = &self.ident;
         let generics = &self.generics;
+        let generic_idents = only_generic_idents(generics);
+        let static_and_generic_idents = with_lifetime(generic_idents.clone(), "static");
         let node_ref = &self.node_ref;
 
         // Generate struct fields.
@@ -125,14 +187,16 @@ impl ToTokens for GeneratedNodeBuilder {
                 }
             }
             Fields::Unit => quote! {
-                storage.nodes.spawn(|_| {})
+                storage.nodes.spawn::<Self::AsNodeRef, _>(|_| {})
             },
             _ => unreachable!("struct fields should not be unnamed"),
         };
 
         // Add the <'static> lifetime annotation if the struct has at least one field.
         let as_node_ref = match &self.fields {
-            Fields::Named(fields) if !fields.named.is_empty() => quote!(#node_ref<'static>),
+            Fields::Named(fields) if !fields.named.is_empty() => {
+                quote!(#node_ref #static_and_generic_idents)
+            }
             _ => quote!(#node_ref),
         };
 
@@ -141,7 +205,7 @@ impl ToTokens for GeneratedNodeBuilder {
             #vis struct #ident #generics #struct_fields
 
             #[doc(hidden)]
-            impl ::necs::NodeBuilder for #ident #generics {
+            impl #generics ::necs::NodeBuilder for #ident #generic_idents {
                 type AsNodeRef = #as_node_ref;
 
                 fn __move_to_storage(self, storage: &mut ::necs::storage::Storage) -> ::necs::NodeId {
@@ -158,7 +222,7 @@ struct FieldInfo {
     is_ext: bool,
     vis: Visibility,
     ident: syn::Ident,
-    ty: syn::Type,
+    ty: Type,
 }
 
 struct GeneratedNodeRef {
@@ -178,9 +242,9 @@ impl Parse for GeneratedNodeRef {
         let attrs = input.attrs;
         let vis = input.vis;
         let ident = input.ident;
-        let mut generics = input.generics;
+        let generics = input.generics;
 
-        let data = match input.data {
+        let mut data = match input.data {
             Data::Struct(data) => data,
             _ => {
                 return Err(syn::Error::new_spanned(
@@ -190,50 +254,28 @@ impl Parse for GeneratedNodeRef {
             }
         };
 
-        // Only inject the node lifetime if there is at least one field.
-        let empty = match &data.fields {
-            Fields::Named(named) => named.named.is_empty(),
-            Fields::Unit => true,
-            _ => {
-                return Err(syn::Error::new_spanned(
-                    err_input,
-                    "struct fields must be named",
-                ));
-            }
-        };
-
-        if !empty {
-            generics.params.insert(0, syn::parse_quote!('node));
-
-            // Ensure the angled brackets.
-            if generics.lt_token.is_none() {
-                generics.lt_token = Some(Default::default());
-                generics.gt_token = Some(Default::default());
-            }
-        }
-
         let mut field_infos = Vec::new();
         let mut tuple_types = Vec::new();
 
-        match data.fields {
+        match &mut data.fields {
             Fields::Named(named_fields) => {
-                for field in named_fields.named {
+                for original_field in &mut named_fields.named {
+                    let mut field = original_field.clone();
                     let is_ext = field.attrs.iter().any(|attr| attr.path().is_ident("ext"));
                     let mut attrs = field.attrs;
                     attrs.retain(|attr| !attr.path().is_ident("ext"));
 
-                    let ty = if is_ext {
-                        let inner = &field.ty;
-                        parse_quote!(&'node mut #inner)
-                    } else {
-                        let inner = &field.ty;
+                    if !is_ext {
                         tuple_types.push(field.ty.clone());
-                        parse_quote!(&'node mut #inner)
                     };
+                    let inner = &field.ty;
+                    field.ty = parse_quote!(&'world mut #inner);
+                    original_field.ty = field.ty.clone();
 
-                    // Safe because fields are named.
+                    // Fine because we know fields are named.
                     let ident = field.ident.unwrap();
                     let vis = field.vis;
+                    let ty = field.ty;
                     field_infos.push(FieldInfo {
                         attrs,
                         is_ext,
@@ -252,9 +294,9 @@ impl Parse for GeneratedNodeRef {
             }
         }
 
-        let recipe_ty: syn::Type = parse_quote!((#(#tuple_types),*));
+        let recipe_ty: Type = parse_quote!((#(#tuple_types),*));
         let recipe_tuple = match recipe_ty {
-            syn::Type::Tuple(tup) => tup,
+            Type::Tuple(tup) => tup,
             _ => return Err(syn::Error::new_spanned(recipe_ty, "expected tuple type")),
         };
 
@@ -280,7 +322,6 @@ impl ToTokens for GeneratedNodeRef {
             recipe_tuple,
         } = self;
 
-        // Emit struct fields
         let struct_fields = fields.iter().map(|field| {
             let FieldInfo {
                 attrs,
@@ -298,6 +339,15 @@ impl ToTokens for GeneratedNodeRef {
         let mut field_extractions = Vec::new();
         let mut component_registrations = Vec::new();
         let mut tuple_idx = 0;
+        let generic_idents = only_generic_idents(generics);
+        let mut world_and_generics = generics.clone();
+        let mut world_and_generic_idents = generic_idents.clone();
+        let mut static_and_generic_idents = generic_idents.clone();
+        if self.fields.len() > 0 {
+            world_and_generics = with_lifetime(world_and_generics, "world");
+            world_and_generic_idents = with_lifetime(world_and_generic_idents, "world");
+            static_and_generic_idents = with_lifetime(static_and_generic_idents, "static");
+        }
 
         for field in fields {
             let name = &field.ident;
@@ -333,7 +383,7 @@ impl ToTokens for GeneratedNodeRef {
         let get_match_arms = fields.iter().map(|field| {
             let name = &field.ident;
             let mut ty = &field.ty;
-            if let syn::Type::Reference(type_ref) = &field.ty {
+            if let Type::Reference(type_ref) = &field.ty {
                 ty = &type_ref.elem;
             }
             let name_str = name.to_string();
@@ -345,12 +395,12 @@ impl ToTokens for GeneratedNodeRef {
 
         quote! {
             #(#attrs)*
-            #vis struct #ident #generics {
+            #vis struct #ident #world_and_generics {
                 #(#struct_fields)*
             }
 
             #[doc(hidden)]
-            impl #generics ::necs::NodeTrait for #ident #generics {
+            impl #world_and_generics ::necs::NodeTrait for #ident #world_and_generic_idents {
                 fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
                     match field_name {
                         #(#get_match_arms)*
@@ -360,11 +410,11 @@ impl ToTokens for GeneratedNodeRef {
             }
 
             #[doc(hidden)]
-            impl ::necs::NodeRef for #ident <'static> {
-                type Instance<'node> = #ident #generics;
+            impl #generics ::necs::NodeRef for #ident #static_and_generic_idents {
+                type Instance<'world> = #ident #world_and_generic_idents;
                 type RecipeTuple = #recipe_tuple;
 
-                unsafe fn __build_from_storage<'node>(storage: &'node mut ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #generics {
+                unsafe fn __build_from_storage<'world>(storage: &'world mut ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
                     let recipe_tuple = unsafe {
                         storage
                             .nodes[id.node_type]

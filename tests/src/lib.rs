@@ -5,24 +5,24 @@ mod tests {
     use necs::{Node, NodeTrait, World, node};
 
     #[node]
-    struct Foo {
+    struct Foo<T: 'static + Send + Sync> {
         pub x: u64,
         y: i32,
         z: i32,
-        bar: u32,
+        bar: T,
     }
 
-    //#[node]
-    //struct Bar {}
+    #[node]
+    struct Bar {}
 
-    //#[node]
-    //struct Baz;
+    #[node]
+    struct Baz;
 
     trait Process: NodeTrait {
         fn process(&self);
     }
 
-    impl Process for Foo<'_> {
+    impl<T: Send + Sync> Process for Foo<'_, T> {
         fn process(&self) {
             println!("{:?}", &self.y);
         }
@@ -31,20 +31,20 @@ mod tests {
     #[test]
     fn register_spawn_retrieve() {
         let mut world = World::new();
-        world.register_node::<Foo>();
+        world.register_node::<Foo<u32>>();
         world
             .node_map
-            .register::<Foo, dyn Process, _>(0, |x| Box::new(x));
+            .register::<Foo<u32>, dyn Process, _>(0, |x| Box::new(x));
 
         let node_id = world.spawn_node(FooBuilder {
             x: 8,
             y: 3,
             z: 2,
-            bar: 2,
+            bar: 2u32,
         });
         // The node can be retrieved as a concrete type.
-        let _node_1: Foo = world.get_node::<Foo>(node_id);
-        let node: Foo = world.get_node::<Foo>(node_id);
+        let _node_1: Foo<u32> = world.get_node::<Foo<u32>>(node_id);
+        let node: Foo<u32> = world.get_node::<Foo<u32>>(node_id);
         println!("node.x: {} node.bar: {}", node.x, node.bar);
         println!("node.process():");
         node.process();
