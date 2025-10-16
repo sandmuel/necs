@@ -23,16 +23,16 @@ pub fn only_generic_idents(generics: &Generics) -> Generics {
 
     for param in generics.params.iter() {
         match param {
-            GenericParam::Type(ty) => {
-                let ident = &ty.ident;
+            GenericParam::Type(param) => {
+                let ident = &param.ident;
                 new_generics.params.push(parse_quote!(#ident));
             }
-            GenericParam::Lifetime(lt) => {
-                let lifetime = &lt.lifetime;
+            GenericParam::Lifetime(param) => {
+                let lifetime = &param.lifetime;
                 new_generics.params.push(parse_quote!(#lifetime));
             }
-            GenericParam::Const(konst) => {
-                let ident = &konst.ident;
+            GenericParam::Const(param) => {
+                let ident = &param.ident;
                 new_generics.params.push(parse_quote!(const #ident: _));
             }
         }

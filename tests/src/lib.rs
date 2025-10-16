@@ -9,6 +9,7 @@ mod tests {
         pub x: u64,
         y: i32,
         z: i32,
+        #[ext]
         bar: T,
     }
 

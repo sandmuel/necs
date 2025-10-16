@@ -382,10 +382,6 @@ impl ToTokens for GeneratedNodeRef {
         // Generate match arms for Node::get implementation
         let get_match_arms = fields.iter().map(|field| {
             let name = &field.ident;
-            let mut ty = &field.ty;
-            if let Type::Reference(type_ref) = &field.ty {
-                ty = &type_ref.elem;
-            }
             let name_str = name.to_string();
 
             quote! {
