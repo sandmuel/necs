@@ -4,17 +4,18 @@
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::node_map::TypeMap;
 use crate::storage::Storage;
-use slotmap::{DefaultKey, HopSlotMap};
+use slotmap::HopSlotMap;
 
 mod component;
 pub use crate::node::Node;
 pub use component::ComponentId;
+use crate::storage::key::NodeKey;
 
 mod node;
 mod node_map;
 pub mod storage;
 
-pub type SubStorage<T> = HopSlotMap<DefaultKey, T>;
+pub type SubStorage<T> = HopSlotMap<NodeKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
 pub struct World {

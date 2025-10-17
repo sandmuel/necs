@@ -1,5 +1,5 @@
 use crate::Storage;
-use crate::storage::map_key::MapKey;
+use crate::storage::key::NodeKey;
 use std::any::{Any, type_name};
 use std::marker::Tuple;
 
@@ -12,7 +12,7 @@ pub type NodeType = u16;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NodeId {
     pub node_type: NodeType,
-    pub instance: MapKey,
+    pub instance: NodeKey,
 }
 
 pub trait Field: Any {}

@@ -1,5 +1,5 @@
 use crate::node::NodeType;
-use crate::storage::map_key::MapKey;
+use crate::storage::key::NodeKey;
 use crate::{NodeId, NodeRef};
 use core::panic;
 use slotmap::HopSlotMap;
@@ -7,7 +7,7 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
-type SubStorage<T> = HopSlotMap<MapKey, T>;
+type SubStorage<T> = HopSlotMap<NodeKey, T>;
 
 #[derive(Debug)]
 pub struct NodeStorage {
@@ -32,7 +32,7 @@ impl NodeStorage {
                 .unwrap_or_else(|_| panic!("cannot register more than {} nodes", NodeType::MAX));
             self.map_ids.insert(TypeId::of::<T>(), this_node_type);
             self.node_maps
-                .push(Box::new(SubStorage::<T::RecipeTuple>::new()));
+                .push(Box::new(SubStorage::<T::RecipeTuple>::with_key()));
         }
     }
 
@@ -44,7 +44,7 @@ impl NodeStorage {
     }
 
     /// Insert a node and corresponding components into storage.
-    pub fn spawn<T: NodeRef + Send + Sync, F: FnOnce(MapKey) -> T::RecipeTuple>(
+    pub fn spawn<T: NodeRef + Send + Sync, F: FnOnce(NodeKey) -> T::RecipeTuple>(
         &mut self,
         f: F,
     ) -> NodeId {
