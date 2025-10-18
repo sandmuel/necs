@@ -1,7 +1,7 @@
-use slotmap::SlotMap;
 use crate::storage::component_storage::ComponentStorage;
 use crate::storage::key::NodeKey;
 use crate::storage::node_storage::NodeStorage;
+use slotmap::SlotMap;
 
 mod component_storage;
 pub(crate) mod key;
@@ -22,5 +22,9 @@ impl Storage {
             nodes: NodeStorage::new(),
             components: ComponentStorage::new(),
         }
+    }
+
+    pub fn mint_key(&mut self) -> NodeKey {
+        self.key_factory.insert(())
     }
 }

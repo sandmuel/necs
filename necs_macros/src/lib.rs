@@ -150,7 +150,6 @@ impl ToTokens for GeneratedNodeBuilder {
         };
 
         // Generate field assignments for __move_to_storage().
-        // TODO: Make sure components have the same DefaultKey as the node.
         let field_assignments = match &self.fields {
             Fields::Named(fields) => {
                 let assignments = fields.named.iter().map(|field| {
@@ -159,7 +158,7 @@ impl ToTokens for GeneratedNodeBuilder {
 
                     if has_ext {
                         quote! {
-                            storage.components.spawn(key, self.#field_name);
+                            storage.components.insert(key, self.#field_name);
                         }
                     } else {
                         quote! {
@@ -180,14 +179,14 @@ impl ToTokens for GeneratedNodeBuilder {
                 });
 
                 quote! {
-                    storage.nodes.spawn::<Self::AsNodeRef, _>(|key| {
-                        #(#assignments)*
-                        (#(#tuple_fields,)*)}
-                    )
+                    let key = storage.mint_key();
+                    #(#assignments)*
+                    storage.nodes.spawn::<Self::AsNodeRef>(key, (#(#tuple_fields,)*))
                 }
             }
             Fields::Unit => quote! {
-                storage.nodes.spawn::<Self::AsNodeRef, _>(|_| {})
+                let key = storage.mint_key();
+                storage.nodes.spawn::<Self::AsNodeRef>(key, ())
             },
             _ => unreachable!("struct fields should not be unnamed"),
         };

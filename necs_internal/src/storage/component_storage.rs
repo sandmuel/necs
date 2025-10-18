@@ -1,5 +1,5 @@
-use crate::component::ComponentId;
 use super::key::NodeKey;
+use crate::component::ComponentId;
 use slotmap::SparseSecondaryMap;
 use slotmap::sparse_secondary::ValuesMut;
 use std::any::{Any, TypeId};
@@ -29,7 +29,11 @@ impl<'a> ComponentStorage {
         }
     }
 
-    pub fn spawn<T: 'static + Send + Sync>(&mut self, key: NodeKey, component: T) -> ComponentId<T> {
+    pub fn insert<T: 'static + Send + Sync>(
+        &mut self,
+        key: NodeKey,
+        component: T,
+    ) -> ComponentId<T> {
         unsafe {
             self.map
                 .get_mut(&TypeId::of::<T>())

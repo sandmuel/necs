@@ -2,12 +2,13 @@ use crate::node::NodeType;
 use crate::storage::key::NodeKey;
 use crate::{NodeId, NodeRef};
 use core::panic;
-use slotmap::HopSlotMap;
+use slotmap::SparseSecondaryMap;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::marker::Tuple;
 use std::ops::{Index, IndexMut};
 
-type SubStorage<T> = HopSlotMap<NodeKey, T>;
+type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 
 #[derive(Debug)]
 pub struct NodeStorage {
@@ -32,7 +33,7 @@ impl NodeStorage {
                 .unwrap_or_else(|_| panic!("cannot register more than {} nodes", NodeType::MAX));
             self.map_ids.insert(TypeId::of::<T>(), this_node_type);
             self.node_maps
-                .push(Box::new(SubStorage::<T::RecipeTuple>::with_key()));
+                .push(Box::new(SubStorage::<T::RecipeTuple>::new()));
         }
     }
 
@@ -44,20 +45,22 @@ impl NodeStorage {
     }
 
     /// Insert a node and corresponding components into storage.
-    pub fn spawn<T: NodeRef + Send + Sync, F: FnOnce(NodeKey) -> T::RecipeTuple>(
+    pub fn spawn<T: NodeRef + Send + Sync>(
         &mut self,
-        f: F,
+        key: NodeKey,
+        node: T::RecipeTuple,
     ) -> NodeId {
         let node_type = self.node_type_of::<T>();
+        unsafe {
+            self.node_maps[node_type as usize]
+                // We checked that the node type is registered when defining node_type.
+                // The key used corresponds to this type, so we know this is the correct type.
+                .downcast_mut_unchecked::<SubStorage<T::RecipeTuple>>()
+                .insert(key, node);
+        }
         NodeId {
             node_type,
-            instance: unsafe {
-                self.node_maps[node_type as usize]
-                    // We checked that the node type is registered when defining node_type.
-                    // The key used corresponds to this type, so we know this is the correct type.
-                    .downcast_mut_unchecked::<SubStorage<T::RecipeTuple>>()
-                    .insert_with_key(|key| f(key))
-            },
+            instance: key,
         }
     }
 }
