@@ -161,9 +161,7 @@ impl ToTokens for GeneratedNodeBuilder {
                             storage.components.insert(key, self.#field_name);
                         }
                     } else {
-                        quote! {
-                            let #field_name = self.#field_name;
-                        }
+                        quote! {}
                     }
                 });
 
@@ -174,7 +172,7 @@ impl ToTokens for GeneratedNodeBuilder {
                     if has_ext {
                         None
                     } else {
-                        Some(quote! { #field_name })
+                        Some(quote! { self.#field_name })
                     }
                 });
 
