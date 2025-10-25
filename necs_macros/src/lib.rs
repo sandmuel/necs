@@ -354,7 +354,7 @@ impl ToTokens for GeneratedNodeRef {
                 if let syn::Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     field_extractions.push(quote! {
-                        let #name = &mut storage.components[&::necs::ComponentId::<#inner_type>::new(id.instance)];
+                        let #name = &mut storage.components.get_elements(&::necs::ComponentId::<#inner_type>::new(id.instance));
                     });
                 }
 
@@ -407,11 +407,10 @@ impl ToTokens for GeneratedNodeRef {
                 type Instance<'world> = #ident #world_and_generic_idents;
                 type RecipeTuple = #recipe_tuple;
 
-                unsafe fn __build_from_storage<'world>(storage: &'world mut ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
+                unsafe fn __build_from_storage<'world>(storage: &'world ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
                     let recipe_tuple = unsafe {
                         storage
-                            .nodes[id.node_type]
-                            .downcast_mut_unchecked::<::necs::SubStorage<Self::RecipeTuple>>()
+                            .nodes.get_elements::<Self>()
                             .get_mut(id.instance).unwrap()
                     };
                     #(#field_extractions)*

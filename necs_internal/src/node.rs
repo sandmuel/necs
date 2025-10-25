@@ -49,7 +49,7 @@ pub trait NodeRef: 'static + NodeTrait + Send + Sync {
     /// The safety of this depends on the key-value pairs always being correct
     /// to ensure the safety of unchecked downcasts.
     unsafe fn __build_from_storage<'node>(
-        storage: &'node mut Storage,
+        storage: &'node Storage,
         id: NodeId,
     ) -> Self::Instance<'node>;
 

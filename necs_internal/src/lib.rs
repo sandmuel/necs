@@ -1,5 +1,6 @@
 #![feature(downcast_unchecked)]
 #![feature(tuple_trait)]
+#![feature(unsafe_cell_access)]
 
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::node_map::TypeMap;
@@ -40,6 +41,12 @@ impl World {
         self.node_map
             .register::<T, dyn Node, _>(self.storage.nodes.node_type_of::<T>(), |x| Box::new(x));
     }
+    /*
+    pub fn register_trait<T: NodeRef, Trait: NodeTrait + ?Sized>(&mut self) {
+        self.node_map
+            .register::<T, Trait, _>(self.storage.nodes.node_type_of::<T>(), |x| Box::new(x));
+    }
+     */
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
         let id = node.__move_to_storage(&mut self.storage);
         id
@@ -48,26 +55,23 @@ impl World {
         // The safety of this entirely depends on everything else not having issues.
         unsafe { T::__build_from_storage(&mut self.storage, id) }
     }
-    /*
     pub fn get_nodes<T: NodeRef>(&mut self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
 
         let mut nodes = Vec::with_capacity(ids.len());
 
         for id in ids {
-            unsafe { nodes.push(T::__build_from_storage(&mut self.storage, id)) }
+            unsafe { nodes.push(T::__build_from_storage(&self.storage, id)) }
         }
 
         nodes
     }
-     */
 
     pub fn get_node_ids<T: NodeRef>(&mut self) -> Vec<NodeId> {
         let node_type = self.storage.nodes.node_type_of::<T>();
-        self.storage.nodes[node_type]
-            .downcast_mut::<SubStorage<T::RecipeTuple>>()
-            // TODO give this a proper error message.
-            .unwrap()
+        self.storage
+            .nodes
+            .get_elements::<T>()
             .keys()
             .map(|id| NodeId {
                 node_type,
