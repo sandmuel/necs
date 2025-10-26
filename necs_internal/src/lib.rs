@@ -2,6 +2,9 @@
 #![feature(tuple_trait)]
 #![feature(unsafe_cell_access)]
 
+#[doc(hidden)]
+pub use crate as necs;
+
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::node_map::TypeMap;
 use crate::storage::Storage;
@@ -51,11 +54,11 @@ impl World {
         let id = node.__move_to_storage(&mut self.storage);
         id
     }
-    pub fn get_node<T: NodeRef>(&mut self, id: NodeId) -> T::Instance<'_> {
+    pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
         // The safety of this entirely depends on everything else not having issues.
-        unsafe { T::__build_from_storage(&mut self.storage, id) }
+        unsafe { T::__build_from_storage(&self.storage, id) }
     }
-    pub fn get_nodes<T: NodeRef>(&mut self) -> Vec<T::Instance<'_>> {
+    pub fn get_nodes<T: NodeRef>(&self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
 
         let mut nodes = Vec::with_capacity(ids.len());
@@ -67,7 +70,7 @@ impl World {
         nodes
     }
 
-    pub fn get_node_ids<T: NodeRef>(&mut self) -> Vec<NodeId> {
+    pub fn get_node_ids<T: NodeRef>(&self) -> Vec<NodeId> {
         let node_type = self.storage.nodes.node_type_of::<T>();
         self.storage
             .nodes
@@ -89,8 +92,8 @@ impl World {
     /// # Panics
     /// The node associated with the given [`NodeId`] must be of type [T].
     // TODO: Change panic doc ^
-    pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&mut self, id: NodeId) -> Box<T> {
+    pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&self, id: NodeId) -> Box<T> {
         // The safety of this entirely depends on everything else not having issues.
-        self.node_map.get_node::<T>(&mut self.storage, id)
+        self.node_map.get_node::<T>(&self.storage, id)
     }
 }

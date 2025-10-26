@@ -21,6 +21,7 @@ dependencies = [
 name = "necs_macros"
 version = "0.1.0"
 dependencies = [
+ "necs",
  "proc-macro2",
  "quote",
  "syn",

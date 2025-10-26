@@ -10,7 +10,7 @@ pub struct TypeMap {
         TypeId,
         HashMap<
             NodeType,
-            Box<dyn Fn(&mut Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>,
+            Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>,
         >,
     >,
 }
@@ -30,8 +30,9 @@ impl TypeMap {
         Trait: NodeTrait + ?Sized + 'static,
         F: Fn(T::Instance<'static>) -> Box<Trait> + Send + Sync + 'static,
     {
-        let closure = move |storage: &mut Storage, id: NodeId| {
-            let storage: &'static mut Storage = unsafe { transmute(storage) };
+        let closure = move |storage: &Storage, id: NodeId| {
+            // TODO: ensure get_node() casts back to the proper lifetime.
+            let storage: &'static Storage = unsafe { transmute(storage) };
             let node = unsafe { T::__build_from_storage(storage, id) };
             let trait_obj: Box<Trait> = to_trait_obj(node);
             Box::new(trait_obj) as Box<dyn Any + Send + Sync>
@@ -43,7 +44,7 @@ impl TypeMap {
             .insert(node_type, Box::new(closure));
     }
 
-    pub fn get_node<Trait>(&mut self, storage: &mut Storage, id: NodeId) -> Box<Trait>
+    pub fn get_node<Trait>(&self, storage: &Storage, id: NodeId) -> Box<Trait>
     where
         Trait: 'static + Send + Sync + ?Sized,
     {

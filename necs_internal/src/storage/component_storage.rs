@@ -45,7 +45,7 @@ impl<'a> ComponentStorage {
         }
     }
 
-    pub unsafe fn get_element<T: 'static + Send + Sync>(&self, id: ComponentId<T>) -> &T {
+    pub unsafe fn get_element<T: 'static + Send + Sync>(&self, id: &ComponentId<T>) -> Option<&mut T> {
         unsafe {
             self.map
                 .get(&TypeId::of::<T>())
@@ -53,7 +53,6 @@ impl<'a> ComponentStorage {
                 .as_mut_unchecked()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
                 .get_mut(id.key)
-                .unwrap() // TODO: return an error instead of panicking.
         }
     }
 

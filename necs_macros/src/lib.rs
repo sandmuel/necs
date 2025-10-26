@@ -12,7 +12,6 @@ use syn::{
 
 fn type_uses_world(ty: &Type) -> bool {
     match ty {
-        // Direct reference: & 'world T or &mut 'world T
         Type::Reference(TypeReference {
             lifetime: Some(lifetime),
             ..
@@ -232,7 +231,7 @@ struct GeneratedNodeRef {
 }
 
 impl Parse for GeneratedNodeRef {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let input: DeriveInput = input.parse()?;
         let err_input = input.clone();
 
@@ -351,15 +350,15 @@ impl ToTokens for GeneratedNodeRef {
 
             if field.is_ext {
                 // For #ext fields, access them using the node's instance id.
-                if let syn::Type::Reference(type_ref) = &field.ty {
+                if let Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     field_extractions.push(quote! {
-                        let #name = &mut storage.components.get_elements(&::necs::ComponentId::<#inner_type>::new(id.instance));
+                        let #name = storage.components.get_element(&::necs::ComponentId::<#inner_type>::new(id.instance)).unwrap();
                     });
                 }
 
                 // Get the original type. (without the reference)
-                if let syn::Type::Reference(type_ref) = &field.ty {
+                if let Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     component_registrations.push(quote! {
                         storage.components.register::<#inner_type>();
@@ -435,15 +434,19 @@ impl ToTokens for GeneratedNodeRef {
 /// This macro generates various types and traits used by necs to manage nodes.
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// # use necs::node;
+/// # struct Transform;
+///
 /// #[node]
 /// pub struct MyNode {
-///     // This field has no attributes, and is stored together with the rest of
+///     // This field has no attributes and is stored together with the rest of
 ///     // MyNode's data.
 ///     foo: u32,
-///     // This field is external, it is stored in memory alongside other fields of
+///     bar: i32,
+///     // This field is external; it is stored in memory alongside other fields of
 ///     // the same type, rather than with the rest of MyNode, useful for fields
-///     // which are usually accessed individually.
+///     // which are usually accessed separately.
 ///     #[ext]
 ///     transform: Transform,
 /// }
@@ -457,5 +460,7 @@ pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let node_ref = item;
     let node_builder = syn::parse_macro_input!(node_builder as GeneratedNodeBuilder);
     let node_ref = syn::parse_macro_input!(node_ref as GeneratedNodeRef);
-    quote!(#node_builder #node_ref).into()
+    quote! {
+        #node_builder #node_ref
+    }.into()
 }
