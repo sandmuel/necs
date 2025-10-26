@@ -66,17 +66,24 @@ pub trait NodeTrait: Send + Sync {
 
 /// A subtrait of [`NodeTrait`] that is automatically implemented and registered
 /// for every node.
-/// ```ignore
+/// ```
+/// use necs::{Node, World, node};
+/// let mut world = World::new();
+///
 /// #[node]
 /// struct MyNode {
 ///     my_field: u32,
+///     other_field: i32,
 /// }
 ///
 /// // Register our node.
 /// world.register_node::<MyNode>();
 ///
+/// // Spawn our node.
+/// let node_id = world.spawn_node(MyNodeBuilder { my_field: 8, other_field: 0 });
+///
 /// // Now we can retrieve it as a dyn Node.
-/// let mut node = world.get_node_resilient::<dyn Node>();
+/// let mut node = world.get_node_resilient::<dyn Node>(node_id);
 ///
 /// // And we can access fields using get() since Node is a subtrait of NodeTrait.
 /// println!("my_field: {}", node.get("my_field").to::<u32>());

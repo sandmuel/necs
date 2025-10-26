@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 slotmap = "1.0.7"
+
+[dev-dependencies]
+necs = { path = "../" }
