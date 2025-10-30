@@ -353,7 +353,7 @@ impl ToTokens for GeneratedNodeRef {
                 if let Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     field_extractions.push(quote! {
-                        let #name = storage.components.get_element(&::necs::ComponentId::<#inner_type>::new(id.instance)).unwrap();
+                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.instance)).unwrap();
                     });
                 }
 
@@ -462,5 +462,6 @@ pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let node_ref = syn::parse_macro_input!(node_ref as GeneratedNodeRef);
     quote! {
         #node_builder #node_ref
-    }.into()
+    }
+    .into()
 }
