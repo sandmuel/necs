@@ -3,7 +3,7 @@ mod key;
 mod node_storage;
 
 pub(crate) use component_storage::ComponentStorage;
-pub use key::NodeKey;
+pub(crate) use key::NodeKey;
 pub use node_storage::BorrowDropper;
 pub(crate) use node_storage::NodeStorage;
 use slotmap::SlotMap;

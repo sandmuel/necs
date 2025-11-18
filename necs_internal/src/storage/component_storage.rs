@@ -109,7 +109,7 @@ impl<'a> ComponentStorage {
                 .expect("the component type should be registered first")
                 .as_mut_unchecked()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .get_mut(id.key)
+                .get_mut(id.into())
         }
     }
 
@@ -122,7 +122,7 @@ impl<'a> ComponentStorage {
                 .expect("the component type should be registered first")
                 .get_mut()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .get_mut(id.key)
+                .get_mut(id.into())
         }
     }
 

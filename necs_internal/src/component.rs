@@ -1,21 +1,22 @@
 use crate::storage::NodeKey;
 use std::marker::PhantomData;
 
-/// Wrapper around [`NodeKey`], but with [`T`] included to make downcasting
-/// straightforward.
+/// A wrapper around [`NodeKey`], but with [`T`] included to support
+/// downcasting.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ComponentId<T> {
-    __type: PhantomData<T>,
-    pub(crate) key: NodeKey,
+    key: NodeKey,
+    _marker: PhantomData<T>,
 }
 
 impl<T> ComponentId<T> {
     /// Constructs a new [`ComponentId`] based on a given [`T`] representing the
     /// component's type, and [`NodeKey`].
     ///
-    /// This should only be created where [T] is a component type present on the
-    /// node which the given [`NodeKey`] refers to. Failing to meet these
-    /// expectations can result in a panic where no entry of [NodeKey] can be
-    /// found for [T].
+    /// This should only be created where [`T`] is a component type present on
+    /// the node which the given [`NodeKey`] refers to. Failing to meet these
+    /// expectations can result in a panic where no entry of [`NodeKey`] can be
+    /// found for [`T`].
     ///
     /// # Examples
     ///
@@ -32,8 +33,14 @@ impl<T> ComponentId<T> {
     /// ```
     pub fn new(key: NodeKey) -> Self {
         Self {
-            __type: PhantomData,
             key,
+            _marker: PhantomData,
         }
+    }
+}
+
+impl<T> From<&ComponentId<T>> for NodeKey {
+    fn from(component_id: &ComponentId<T>) -> Self {
+        component_id.key
     }
 }
