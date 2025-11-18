@@ -1,4 +1,4 @@
-use syn::{GenericParam, Generics, Lifetime, parse_quote};
+use syn::{GenericParam, Generics, Lifetime, Visibility, parse_quote};
 
 /// Insert a lifetime parameter with the given name.
 pub fn with_lifetime(mut generics: Generics, lifetime_name: &str) -> Generics {
@@ -39,4 +39,17 @@ pub fn only_generic_idents(generics: &Generics) -> Generics {
     }
 
     new_generics
+}
+
+/// Increase the visibility of an item by one level.
+pub fn one_up_vis(vis: Visibility) -> Visibility {
+    match vis {
+        // Inherited generally means private, so we replace it with pub(super).
+        Visibility::Inherited => parse_quote!(pub(super)),
+        Visibility::Restricted(mut vis) => {
+            vis.path.segments.push(parse_quote!(super));
+            Visibility::Restricted(vis)
+        }
+        Visibility::Public(_) => parse_quote!(pub),
+    }
 }

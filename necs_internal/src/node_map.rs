@@ -8,10 +8,7 @@ use std::mem::transmute;
 pub struct TypeMap {
     map: HashMap<
         TypeId,
-        HashMap<
-            NodeType,
-            Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any + Send + Sync> + Send + Sync>,
-        >,
+        HashMap<NodeType, Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any> + Send + Sync>>,
     >,
 }
 
@@ -35,7 +32,7 @@ impl TypeMap {
             let storage: &'static Storage = unsafe { transmute(storage) };
             let node = unsafe { T::__build_from_storage(storage, id) };
             let trait_obj: Box<Trait> = to_trait_obj(node);
-            Box::new(trait_obj) as Box<dyn Any + Send + Sync>
+            Box::new(trait_obj) as Box<dyn Any>
         };
 
         self.map
@@ -46,7 +43,7 @@ impl TypeMap {
 
     pub fn get_node<Trait>(&self, storage: &Storage, id: NodeId) -> Box<Trait>
     where
-        Trait: 'static + Send + Sync + ?Sized,
+        Trait: 'static + ?Sized,
     {
         let type_map = self
             .map

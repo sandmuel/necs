@@ -1,19 +1,20 @@
 #![feature(downcast_unchecked)]
 #![feature(tuple_trait)]
 #![feature(unsafe_cell_access)]
-
-#[doc(hidden)]
-pub use crate as necs;
+#![feature(sync_unsafe_cell)]
+#![feature(ptr_as_ref_unchecked)]
 
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::node_map::TypeMap;
-use crate::storage::Storage;
+pub use necs_macros::node;
 use slotmap::SparseSecondaryMap;
+use storage::Storage;
 
 mod component;
 pub use crate::node::Node;
-use crate::storage::key::NodeKey;
 pub use component::ComponentId;
+pub use storage::BorrowDropper;
+use storage::NodeKey;
 
 mod node;
 mod node_map;
@@ -23,19 +24,16 @@ pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
 pub struct World {
+    pub(crate) storage: Storage,
     // Maps type ids to types, allowing us to work on nodes without knowing their types.
     pub node_map: TypeMap,
-    storage: Storage,
-    // TODO: Keep track of borrowed components and nodes.
 }
 
 impl World {
     pub fn new() -> Self {
-        Self {
-            node_map: TypeMap::new(),
-            storage: Storage::new(),
-        }
+        Self::default()
     }
+
     pub fn register_node<T>(&mut self)
     where
         T: NodeRef,
@@ -51,13 +49,13 @@ impl World {
     }
      */
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
-        let id = node.__move_to_storage(&mut self.storage);
-        id
+        node.__move_to_storage(&mut self.storage)
     }
     pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
         // The safety of this entirely depends on everything else not having issues.
         unsafe { T::__build_from_storage(&self.storage, id) }
     }
+    /*
     pub fn get_nodes<T: NodeRef>(&self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
 
@@ -69,12 +67,14 @@ impl World {
 
         nodes
     }
+     */
 
+    /*
     pub fn get_node_ids<T: NodeRef>(&self) -> Vec<NodeId> {
         let node_type = self.storage.nodes.node_type_of::<T>();
         self.storage
             .nodes
-            .get_elements::<T>()
+            .get_element::<T>()
             .keys()
             .map(|id| NodeId {
                 node_type,
@@ -82,6 +82,7 @@ impl World {
             })
             .collect()
     }
+     */
 
     /// Gets a node of type [T].
     ///
@@ -95,5 +96,14 @@ impl World {
     pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&self, id: NodeId) -> Box<T> {
         // The safety of this entirely depends on everything else not having issues.
         self.node_map.get_node::<T>(&self.storage, id)
+    }
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self {
+            storage: Storage::new(),
+            node_map: TypeMap::new(),
+        }
     }
 }

@@ -9,6 +9,7 @@ use syn::{
     Attribute, Data, DeriveInput, Fields, GenericArgument, Generics, Lifetime, PathArguments,
     Result, Type, TypeReference, TypeTuple, Visibility, parse_quote,
 };
+use crate::utils::one_up_vis;
 
 fn type_uses_world(ty: &Type) -> bool {
     match ty {
@@ -86,7 +87,7 @@ impl Parse for GeneratedNodeBuilder {
         let err_input = input.clone();
 
         let attrs = input.attrs;
-        let vis = input.vis;
+        let vis = one_up_vis(input.vis);
         let ident = format_ident!("{}Builder", input.ident);
         let mut generics = input.generics;
         let node_ref = input.ident;
@@ -129,7 +130,7 @@ impl ToTokens for GeneratedNodeBuilder {
                 let fields = fields.named.iter().map(|field| {
                     let field_name = &field.ident;
                     let field_ty = &field.ty;
-                    let field_vis = &field.vis;
+                    let field_vis = one_up_vis(field.vis.clone());
                     // Filter out #[ext] attributes.
                     let attrs = field
                         .attrs
@@ -236,7 +237,7 @@ impl Parse for GeneratedNodeRef {
         let err_input = input.clone();
 
         let attrs = input.attrs;
-        let vis = input.vis;
+        let vis = one_up_vis(input.vis);
         let ident = input.ident;
         let generics = input.generics;
 
@@ -318,6 +319,21 @@ impl ToTokens for GeneratedNodeRef {
             recipe_tuple,
         } = self;
 
+        let borrowed_def = if fields.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                #[doc(hidden)]
+                borrowed: ::necs::BorrowDropper<'world>,
+            }
+        };
+
+        let borrowed = if fields.is_empty() {
+            quote! {}
+        } else {
+            quote! { borrowed, }
+        };
+
         let struct_fields = fields.iter().map(|field| {
             let FieldInfo {
                 attrs,
@@ -326,9 +342,10 @@ impl ToTokens for GeneratedNodeRef {
                 ty,
                 ..
             } = field;
+            let field_vis = one_up_vis(vis.clone());
             quote! {
                 #(#attrs)*
-                #vis #ident: #ty,
+                #field_vis #ident: #ty,
             }
         });
 
@@ -339,7 +356,7 @@ impl ToTokens for GeneratedNodeRef {
         let mut world_and_generics = generics.clone();
         let mut world_and_generic_idents = generic_idents.clone();
         let mut static_and_generic_idents = generic_idents.clone();
-        if self.fields.len() > 0 {
+        if !self.fields.is_empty() {
             world_and_generics = with_lifetime(world_and_generics, "world");
             world_and_generic_idents = with_lifetime(world_and_generic_idents, "world");
             static_and_generic_idents = with_lifetime(static_and_generic_idents, "static");
@@ -388,6 +405,7 @@ impl ToTokens for GeneratedNodeRef {
         quote! {
             #(#attrs)*
             #vis struct #ident #world_and_generics {
+                #borrowed_def
                 #(#struct_fields)*
             }
 
@@ -407,13 +425,10 @@ impl ToTokens for GeneratedNodeRef {
                 type RecipeTuple = #recipe_tuple;
 
                 unsafe fn __build_from_storage<'world>(storage: &'world ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
-                    let recipe_tuple = unsafe {
-                        storage
-                            .nodes.get_elements::<Self>()
-                            .get_mut(id.instance).unwrap()
-                    };
+                    let (recipe_tuple, borrowed) = unsafe { storage.nodes.get_element::<Self>(id) };
                     #(#field_extractions)*
                     #ident {
+                        #borrowed
                         #(#field_names,)*
                     }
                 }
@@ -426,8 +441,7 @@ impl ToTokens for GeneratedNodeRef {
                     #(#component_registrations)*
                 }
             }
-        }
-            .to_tokens(tokens);
+        }.to_tokens(tokens);
     }
 }
 
@@ -437,6 +451,7 @@ impl ToTokens for GeneratedNodeRef {
 /// ```
 /// # use necs::node;
 /// # struct Transform;
+/// # fn main() {
 ///
 /// #[node]
 /// pub struct MyNode {
@@ -450,18 +465,35 @@ impl ToTokens for GeneratedNodeRef {
 ///     #[ext]
 ///     transform: Transform,
 /// }
+/// # }
 /// ```
 ///
 /// This will generate additional builder and reference code associated with
 /// `MyNode` to enable advanced functionality.
 #[proc_macro_attribute]
 pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let decl_line = item
+        .clone()
+        .into_iter()
+        .next()
+        .unwrap()
+        .span()
+        .start()
+        .line();
+    let mod_name = syn::Ident::new(
+        &format!("necs_node_{}", decl_line),
+        proc_macro2::Span::call_site(),
+    );
     let node_builder = item.clone();
     let node_ref = item;
     let node_builder = syn::parse_macro_input!(node_builder as GeneratedNodeBuilder);
     let node_ref = syn::parse_macro_input!(node_ref as GeneratedNodeRef);
     quote! {
-        #node_builder #node_ref
+        mod #mod_name {
+            use super::*;
+            #node_builder #node_ref
+        }
+        pub use #mod_name::*;
     }
     .into()
 }

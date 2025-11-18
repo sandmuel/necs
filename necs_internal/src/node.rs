@@ -1,5 +1,5 @@
 use crate::Storage;
-use crate::storage::key::NodeKey;
+use crate::storage::NodeKey;
 use std::any::{Any, type_name};
 use std::marker::Tuple;
 
@@ -11,6 +11,8 @@ pub type NodeType = u16;
 /// stored by [`World`](crate::World).
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NodeId {
+    // TODO: is it safe having this buildable? If two different NodeTypes are given the same key,
+    // there's chaos since multiple nodes can have the same component.
     pub node_type: NodeType,
     pub instance: NodeKey,
 }
@@ -40,7 +42,7 @@ pub trait NodeBuilder {
 
 /// Do **not** implement this trait.
 /// This trait is only to be implemented by the corresponding proc macro crate.
-pub trait NodeRef: 'static + NodeTrait + Send + Sync {
+pub trait NodeRef: 'static + NodeTrait {
     type Instance<'node>: Node;
     type RecipeTuple: Tuple + Send + Sync;
 
@@ -48,10 +50,7 @@ pub trait NodeRef: 'static + NodeTrait + Send + Sync {
     /// # Safety
     /// The safety of this depends on the key-value pairs always being correct
     /// to ensure the safety of unchecked downcasts.
-    unsafe fn __build_from_storage<'node>(
-        storage: &'node Storage,
-        id: NodeId,
-    ) -> Self::Instance<'node>;
+    unsafe fn __build_from_storage(storage: &Storage, id: NodeId) -> Self::Instance<'_>;
 
     /// Registers this node to node storage and all fields with the `#[ext]`
     /// attribute to component storage.
@@ -60,7 +59,7 @@ pub trait NodeRef: 'static + NodeTrait + Send + Sync {
 
 /// Require this on any trait that should be compatible with
 /// [`get_node_resilient`](crate::World::get_node_resilient).
-pub trait NodeTrait: Send + Sync {
+pub trait NodeTrait {
     fn get(&mut self, field_name: &str) -> &mut dyn Field;
 }
 
