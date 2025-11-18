@@ -7,15 +7,18 @@ use std::any::{Any, TypeId};
 use std::cell::SyncUnsafeCell;
 use std::collections::HashMap;
 use std::marker::PhantomPinned;
-use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
+/// Contains a node's data and whether it is borrowed. [`T`] is a tuple of a
+/// node's fields (#[ext] fields not included, those are stored as components).
 struct NodeCell<T> {
     node: SyncUnsafeCell<T>,
+    // Tracks whether this node is currently borrowed.
     borrowed: AtomicBool,
 }
 
+/// For use by the #[node] macro, this drops runtime borrows.
 pub struct BorrowDropper<'a>(&'a AtomicBool, PhantomPinned);
 
 impl<'a> BorrowDropper<'a> {
@@ -30,18 +33,13 @@ impl Drop for BorrowDropper<'_> {
     }
 }
 
-impl Deref for BorrowDropper<'_> {
-    type Target = AtomicBool;
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
 type SubStorage<T> = SparseSecondaryMap<NodeKey, NodeCell<T>>;
 
 #[derive(Debug)]
 pub struct NodeStorage {
+    // Maps [`TypeId`]s to smaller node type identifiers.
     map_ids: HashMap<TypeId, NodeType>,
+    // Contains a map of nodes for each node type.
     node_maps: Vec<Box<dyn Any + Send + Sync>>,
 }
 
@@ -101,11 +99,8 @@ impl NodeStorage {
         &'_ self,
         id: NodeId,
     ) -> (&'_ mut T::RecipeTuple, BorrowDropper<'_>) {
-        let node_type = self
-            .map_ids
-            .get(&TypeId::of::<T>())
-            .expect("the node type should be registered first");
-        let node_type = *node_type as usize;
+        let node_type = self.node_type_of::<T>();
+        let node_type = node_type as usize;
         let node_cell = unsafe {
             self.node_maps
                 .get(node_type)

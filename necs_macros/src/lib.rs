@@ -1,6 +1,7 @@
 mod utils;
 use utils::{only_generic_idents, with_lifetime};
 
+use crate::utils::one_up_vis;
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use quote::{format_ident, quote};
@@ -9,7 +10,6 @@ use syn::{
     Attribute, Data, DeriveInput, Fields, GenericArgument, Generics, Lifetime, PathArguments,
     Result, Type, TypeReference, TypeTuple, Visibility, parse_quote,
 };
-use crate::utils::one_up_vis;
 
 fn type_uses_world(ty: &Type) -> bool {
     match ty {
