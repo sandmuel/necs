@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use necs::{NodeTrait, World, node};
+    use necs::{Node, NodeTrait, World, node};
 
     #[derive(Debug)]
     struct Useless;
@@ -53,18 +53,23 @@ mod tests {
         drop(node); // It also automatically drops when it goes out of scope.
         // Or it may be retrieved as any one of the registered traits (in this
         // case only Process).
-        let node = world.get_node_resilient::<dyn Process>(node_id);
+        let mut node = world.get_node_resilient::<dyn Process>(node_id);
         node.process();
         // And we can access fields based on their names (or just create a
         // getter and setter on the Process trait instead, but
         // registering traits is boring and quite a lot of work, so this
-        // is an alternative). println!("Process bar: {}",
-        // node.get("bar").to::<u32>()); Node trait is registered for
-        // all nodes automatically. let mut node =
-        // world.get_node_resilient::<dyn Node>(node_id); And we can
-        // access fields with get. println!("Node bar: {}",
-        // node.get("bar").to::<u32>()); for _ in world.
-        // get_nodes::<Foo>() {    println!("Found a Foo");
-        //}
+        // is an alternative).
+        println!("Process bar: {}", node.get("bar").to::<u32>());
+        drop(node);
+        // Node trait is registered for
+        // all nodes automatically.
+        let mut node = world.get_node_resilient::<dyn Node>(node_id);
+        // And we can access fields with get.
+        println!("Node bar: {}", node.get("bar").to::<u32>());
+        drop(node);
+        for foo in world.get_nodes::<Foo<u32>>() {
+            *foo.y = 1;
+            println!("Found a Foo");
+        }
     }
 }

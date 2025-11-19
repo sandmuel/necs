@@ -2,10 +2,10 @@ use crate::node::NodeType;
 use crate::storage::key::NodeKey;
 use crate::{NodeId, NodeRef};
 use core::panic;
+use rustc_hash::FxHashMap as HashMap;
 use slotmap::SparseSecondaryMap;
 use std::any::{Any, TypeId};
 use std::cell::SyncUnsafeCell;
-use std::collections::HashMap;
 use std::marker::PhantomPinned;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
@@ -46,7 +46,7 @@ pub struct NodeStorage {
 impl NodeStorage {
     pub fn new() -> Self {
         Self {
-            map_ids: HashMap::new(),
+            map_ids: HashMap::default(),
             node_maps: Vec::new(),
         }
     }
@@ -120,5 +120,20 @@ impl NodeStorage {
             ),
             Err(_) => panic!("the same node should not be borrowed multiple times at once"),
         }
+    }
+
+    pub fn get_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
+        let node_type = self.node_type_of::<T>();
+        let sub_storage = unsafe {
+            self.node_maps
+                .get(node_type as usize)
+                .expect("the node type should be registered first")
+                .as_ref()
+                .downcast_ref_unchecked::<SubStorage<T::RecipeTuple>>()
+        };
+        sub_storage.keys().map(move |node_key: NodeKey| NodeId {
+            node_type,
+            instance: node_key,
+        })
     }
 }

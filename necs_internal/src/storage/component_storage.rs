@@ -1,10 +1,10 @@
 use super::key::NodeKey;
 use crate::component::ComponentId;
+use rustc_hash::FxHashMap as HashMap;
 use slotmap::SparseSecondaryMap;
 use slotmap::sparse_secondary::ValuesMut;
 use std::any::{Any, TypeId};
 use std::cell::UnsafeCell;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ComponentStorage {
@@ -16,7 +16,7 @@ pub struct ComponentStorage {
 impl<'a> ComponentStorage {
     pub(crate) fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            map: HashMap::default(),
         }
     }
 

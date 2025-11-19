@@ -1,8 +1,8 @@
 use crate::node::{Node, NodeId, NodeType};
 use crate::storage::Storage;
 use crate::{NodeRef, NodeTrait};
+use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
-use std::collections::HashMap;
 use std::mem::transmute;
 
 pub struct TypeMap {
@@ -15,7 +15,7 @@ pub struct TypeMap {
 impl TypeMap {
     pub fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            map: HashMap::default(),
         }
     }
 
@@ -37,7 +37,7 @@ impl TypeMap {
 
         self.map
             .entry(TypeId::of::<Trait>())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(node_type, Box::new(closure));
     }
 
@@ -48,13 +48,15 @@ impl TypeMap {
         let type_map = self
             .map
             .get(&TypeId::of::<Trait>())
-            .expect(&format!("trait {} not registered", type_name::<Trait>()));
+            .unwrap_or_else(|| panic!("trait {} not registered", type_name::<Trait>()));
 
-        let factory = type_map.get(&id.node_type).expect(&format!(
-            "type {:?} not registered for Trait {}",
-            id.node_type,
-            type_name::<Trait>()
-        ));
+        let factory = type_map.get(&id.node_type).unwrap_or_else(|| {
+            panic!(
+                "type {:?} not registered for Trait {}",
+                id.node_type,
+                type_name::<Trait>()
+            )
+        });
 
         let trait_obj = factory(storage, id);
 

@@ -55,7 +55,6 @@ impl World {
         // The safety of this entirely depends on everything else not having issues.
         unsafe { T::__build_from_storage(&self.storage, id) }
     }
-    /*
     pub fn get_nodes<T: NodeRef>(&self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
 
@@ -67,22 +66,9 @@ impl World {
 
         nodes
     }
-     */
-
-    /*
-    pub fn get_node_ids<T: NodeRef>(&self) -> Vec<NodeId> {
-        let node_type = self.storage.nodes.node_type_of::<T>();
-        self.storage
-            .nodes
-            .get_element::<T>()
-            .keys()
-            .map(|id| NodeId {
-                node_type,
-                instance: id,
-            })
-            .collect()
+    pub fn get_node_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
+        self.storage.nodes.get_ids::<T>()
     }
-     */
 
     /// Gets a node of type [T].
     ///

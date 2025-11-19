@@ -10,6 +10,13 @@ categories = ["game-development"]
 necs_internal = { path = "necs_internal" }
 necs_macros = { path = "necs_macros" }
 
+[dev-dependencies]
+criterion = { version = "0.7", features = ["html_reports"] }
+
+[[bench]]
+name = "node_iteration"
+harness = false
+
 [workspace]
 resolver = "2"
 members = ["necs_internal", "necs_macros", "tests"]
