@@ -1,5 +1,3 @@
-#![feature(downcast_unchecked)]
-
 pub use necs_internal::World;
 #[doc(hidden)]
 pub use necs_internal::*;
