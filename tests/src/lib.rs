@@ -1,5 +1,3 @@
-#![feature(downcast_unchecked)]
-
 #[cfg(test)]
 mod tests {
     use necs::{NodeTrait, World, node};
