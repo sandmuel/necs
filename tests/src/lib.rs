@@ -1,5 +1,4 @@
 #![feature(downcast_unchecked)]
-#![feature(ptr_as_ref_unchecked)]
 
 #[cfg(test)]
 mod tests {
