@@ -1,6 +1,5 @@
 #![feature(downcast_unchecked)]
 #![feature(ptr_as_ref_unchecked)]
-#![feature(rwlock_data_ptr)]
 
 #[cfg(test)]
 mod tests {
