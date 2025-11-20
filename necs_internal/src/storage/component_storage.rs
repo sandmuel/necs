@@ -4,13 +4,13 @@ use rustc_hash::FxHashMap as HashMap;
 use slotmap::SparseSecondaryMap;
 use slotmap::sparse_secondary::ValuesMut;
 use std::any::{Any, TypeId};
-use std::cell::UnsafeCell;
+use std::cell::SyncUnsafeCell;
 
 #[derive(Debug)]
 pub struct ComponentStorage {
     // This is always a HashMap<TypeId, SparseSecondaryMap<ComponentId, T>>, but the
     // SparseSecondaryMap is made dyn to avoid the need to downcast each value.
-    map: HashMap<TypeId, Box<UnsafeCell<dyn Any + Send + Sync>>>,
+    map: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl<'a> ComponentStorage {
@@ -37,9 +37,9 @@ impl<'a> ComponentStorage {
     pub fn register<T: 'static + Send + Sync>(&mut self) {
         self.map
             .entry(TypeId::of::<T>())
-            .or_insert(Box::new(UnsafeCell::new(
-                SparseSecondaryMap::<NodeKey, T>::new(),
-            )));
+            .or_insert(Box::new(
+                SparseSecondaryMap::<NodeKey, SyncUnsafeCell<T>>::new(),
+            ));
     }
 
     /// Inserts the given component into storage.
@@ -59,7 +59,6 @@ impl<'a> ComponentStorage {
             self.map
                 .get_mut(&TypeId::of::<T>())
                 .expect("the component type should be registered first")
-                .get_mut()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
                 .insert(key, component);
             ComponentId::new(key)
@@ -99,7 +98,7 @@ impl<'a> ComponentStorage {
     pub unsafe fn get_element_unchecked<T: 'static + Send + Sync>(
         &self,
         id: &ComponentId<T>,
-    ) -> Option<&mut T> {
+    ) -> &mut T {
         // Safety: the type of the downcast is guaranteed to be correct since it is
         // based on the same type as the key. The caller must guarantee that another
         // reference to this component does not exist.
@@ -107,9 +106,10 @@ impl<'a> ComponentStorage {
             self.map
                 .get(&TypeId::of::<T>())
                 .expect("the component type should be registered first")
+                .downcast_ref_unchecked::<SparseSecondaryMap<NodeKey, SyncUnsafeCell<T>>>()
+                .get_unchecked(id.into())
+                .get()
                 .as_mut_unchecked()
-                .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .get_mut(id.into())
         }
     }
 
@@ -120,7 +120,6 @@ impl<'a> ComponentStorage {
             self.map
                 .get_mut(&TypeId::of::<T>())
                 .expect("the component type should be registered first")
-                .get_mut()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
                 .get_mut(id.into())
         }
@@ -133,7 +132,6 @@ impl<'a> ComponentStorage {
             self.map
                 .get_mut(&TypeId::of::<T>())
                 .expect("the component type should be registered first")
-                .get_mut()
                 .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
                 .values_mut()
         }

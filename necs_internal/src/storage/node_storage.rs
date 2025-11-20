@@ -99,11 +99,9 @@ impl NodeStorage {
         &'_ self,
         id: NodeId,
     ) -> (&'_ mut T::RecipeTuple, BorrowDropper<'_>) {
-        let node_type = self.node_type_of::<T>();
-        let node_type = node_type as usize;
         let node_cell = unsafe {
             self.node_maps
-                .get(node_type)
+                .get(id.node_type as usize)
                 .expect("the node type should be registered first")
                 .as_ref()
                 .downcast_ref_unchecked::<SubStorage<T::RecipeTuple>>()

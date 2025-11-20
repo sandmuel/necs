@@ -61,8 +61,7 @@ mod tests {
         // is an alternative).
         println!("Process bar: {}", node.get("bar").to::<u32>());
         drop(node);
-        // Node trait is registered for
-        // all nodes automatically.
+        // The Node trait is registered for all nodes automatically.
         let mut node = world.get_node_resilient::<dyn Node>(node_id);
         // And we can access fields with get.
         println!("Node bar: {}", node.get("bar").to::<u32>());
@@ -70,6 +69,32 @@ mod tests {
         for foo in world.get_nodes::<Foo<u32>>() {
             *foo.y = 1;
             println!("Found a Foo");
+        }
+    }
+
+    mod flamegraph_test {
+        use necs::node;
+
+        #[node]
+        pub struct Foo {
+            pub a: u32,
+            pub b: u32,
+            #[ext]
+            pub c: u32,
+        }
+    }
+
+    #[test]
+    fn flamegraph_test() {
+        let mut world = World::new();
+        world.register_node::<flamegraph_test::Foo>();
+        for _ in 0..1_000_000 {
+            world.spawn_node(flamegraph_test::FooBuilder { a: 1, b: 2, c: 3 });
+        }
+        for _ in 0..100 {
+            for foo in world.get_nodes::<flamegraph_test::Foo>() {
+                *foo.b = 2;
+            }
         }
     }
 }

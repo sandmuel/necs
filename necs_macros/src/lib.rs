@@ -370,7 +370,7 @@ impl ToTokens for GeneratedNodeRef {
                 if let Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     field_extractions.push(quote! {
-                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.instance)).unwrap();
+                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.instance));
                     });
                 }
 
