@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use necs::{Node, NodeTrait, World, node};
+    use necs::{MiniTypeId, Node, NodeTrait, World, node};
 
     #[derive(Debug)]
     struct Useless;
@@ -36,7 +36,7 @@ mod tests {
         world.register_node::<Foo<u32>>();
         world
             .node_map
-            .register::<Foo<u32>, dyn Process, _>(0, |x| Box::new(x));
+            .register::<Foo<u32>, dyn Process, _>(MiniTypeId::from(0), |x| Box::new(x));
 
         let node_id = world.spawn_node(FooBuilder {
             x: Useless,

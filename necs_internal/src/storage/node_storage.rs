@@ -1,22 +1,12 @@
-use crate::node::NodeType;
-use crate::storage::key::NodeKey;
+use crate::NodeKey;
+use crate::storage::MiniTypeMap;
 use crate::{NodeId, NodeRef};
 use core::panic;
-use rustc_hash::FxHashMap as HashMap;
-use slotmap::SparseSecondaryMap;
-use std::any::{Any, TypeId};
 use std::cell::SyncUnsafeCell;
 use std::marker::PhantomPinned;
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-
-/// Contains a node's data and whether it is borrowed. [`T`] is a tuple of a
-/// node's fields (#[ext] fields not included, those are stored as components).
-struct NodeCell<T> {
-    node: SyncUnsafeCell<T>,
-    // Tracks whether this node is currently borrowed.
-    borrowed: AtomicBool,
-}
 
 /// For use by the #[node] macro, this drops runtime borrows.
 pub struct BorrowDropper<'a>(&'a AtomicBool, PhantomPinned);
@@ -33,60 +23,40 @@ impl Drop for BorrowDropper<'_> {
     }
 }
 
-type SubStorage<T> = SparseSecondaryMap<NodeKey, NodeCell<T>>;
+/// Contains a node's data and whether it is borrowed. [`T`] is a tuple of a
+/// node's fields (#[ext] fields not included, those are stored as components).
+pub struct NodeCell<T> {
+    node: SyncUnsafeCell<T>,
+    // Tracks whether this node is currently borrowed.
+    borrowed: AtomicBool,
+}
 
 #[derive(Debug)]
-pub struct NodeStorage {
-    // Maps [`TypeId`]s to smaller node type identifiers.
-    map_ids: HashMap<TypeId, NodeType>,
-    // Contains a map of nodes for each node type.
-    node_maps: Vec<Box<dyn Any + Send + Sync>>,
-}
+pub struct NodeStorage(MiniTypeMap);
 
 impl NodeStorage {
     pub fn new() -> Self {
-        Self {
-            map_ids: HashMap::default(),
-            node_maps: Vec::new(),
-        }
+        Self(MiniTypeMap::default())
     }
 
     /// Registers a node type if it does not exist already.
     pub fn register<T: NodeRef>(&mut self) {
-        if !self.map_ids.contains_key(&TypeId::of::<T>()) {
-            let this_node_type = self.map_ids.len() as NodeType;
-            // TODO make sure this gets called in release mode as well.
-            let _ = NodeType::try_from(self.map_ids.len())
-                .unwrap_or_else(|_| panic!("cannot register more than {} nodes", NodeType::MAX));
-            self.map_ids.insert(TypeId::of::<T>(), this_node_type);
-            self.node_maps
-                .push(Box::new(SubStorage::<T::RecipeTuple>::new()));
-        }
-    }
-
-    pub fn node_type_of<T: NodeRef>(&self) -> NodeType {
-        *self
-            .map_ids
-            .get(&TypeId::of::<T>())
-            .expect("the node type should be registered first")
+        self.0.register::<T, _>();
     }
 
     /// Insert a node and corresponding components into storage.
-    pub fn spawn<T: NodeRef>(&mut self, key: NodeKey, node: T::RecipeTuple) -> NodeId {
-        let node_type = self.node_type_of::<T>();
-        unsafe {
-            self.node_maps[node_type as usize]
-                // We checked that the node type is registered when defining node_type. The key used
-                // corresponds to this type, so we know this is the correct type.
-                .downcast_mut_unchecked::<SubStorage<T::RecipeTuple>>()
-                .insert(
-                    key,
-                    NodeCell {
-                        node: SyncUnsafeCell::new(node),
-                        borrowed: AtomicBool::new(false),
-                    },
-                );
-        }
+    pub fn spawn<T>(&mut self, key: NodeKey, node: T::RecipeTuple) -> NodeId
+    where
+        T: NodeRef,
+    {
+        let node_type = self.mini_type_of::<T>();
+        self.insert::<T, _>(
+            key,
+            NodeCell {
+                node: SyncUnsafeCell::new(node),
+                borrowed: AtomicBool::new(false),
+            },
+        );
         NodeId {
             node_type,
             instance: key,
@@ -95,17 +65,13 @@ impl NodeStorage {
 
     /// TODO
     #[allow(clippy::mut_from_ref)] // We do our own borrow checking.
-    pub fn get_element<T: NodeRef>(
-        &'_ self,
-        id: NodeId,
-    ) -> (&'_ mut T::RecipeTuple, BorrowDropper<'_>) {
-        let node_cell = unsafe {
-            self.node_maps
-                .get(id.node_type as usize)
-                .expect("the node type should be registered first")
-                .as_ref()
-                .downcast_ref_unchecked::<SubStorage<T::RecipeTuple>>()
-                .get(id.instance)
+    pub fn get_element<T>(&'_ self, id: NodeId) -> (&'_ mut T::RecipeTuple, BorrowDropper<'_>)
+    where
+        T: NodeRef,
+    {
+        let node_cell: &NodeCell<T::RecipeTuple> = unsafe {
+            // TODO: ensure a custom NodeId can't be created to avoid a mismatch.
+            self.get_unchecked::<T, _>(id.node_type, id.instance)
                 .unwrap()
         };
         match node_cell
@@ -121,17 +87,24 @@ impl NodeStorage {
     }
 
     pub fn get_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
-        let node_type = self.node_type_of::<T>();
-        let sub_storage = unsafe {
-            self.node_maps
-                .get(node_type as usize)
-                .expect("the node type should be registered first")
-                .as_ref()
-                .downcast_ref_unchecked::<SubStorage<T::RecipeTuple>>()
-        };
-        sub_storage.keys().map(move |node_key: NodeKey| NodeId {
+        let node_type = self.mini_type_of::<T>();
+        let keys = self.keys::<T, _>();
+        keys.map(move |node_key: NodeKey| NodeId {
             node_type,
             instance: node_key,
         })
+    }
+}
+
+impl Deref for NodeStorage {
+    type Target = MiniTypeMap;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for NodeStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

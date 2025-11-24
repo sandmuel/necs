@@ -1,12 +1,26 @@
-use crate::storage::NodeKey;
+use crate::{MiniTypeId, NodeKey};
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 
 /// A wrapper around [`NodeKey`], but with [`T`] included to support
 /// downcasting.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ComponentId<T> {
+    component_type: MiniTypeId,
     key: NodeKey,
     _marker: PhantomData<T>,
+}
+
+impl<T> Debug for ComponentId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.key)
+    }
+}
+
+impl<T> Display for ComponentId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.key)
+    }
 }
 
 impl<T> ComponentId<T> {
@@ -22,20 +36,28 @@ impl<T> ComponentId<T> {
     ///
     /// ```
     /// # use necs::{NodeId, ComponentId};
-    /// # use necs::storage::NodeKey;
+    /// # use necs::NodeKey;
     /// # use slotmap::Key;
+    /// use necs_internal::MiniTypeId;
     /// let node_id: NodeId;
     /// # node_id = NodeId {
-    /// #     node_type: 0,
+    /// #     node_type: MiniTypeId::from(0),
     /// #     instance: NodeKey::null(),
     /// # };
-    /// let instance = ComponentId::<u32>::new(node_id.instance);
+    /// let instance = ComponentId::<u32>::new(node_id.node_type, node_id.instance);
     /// ```
-    pub fn new(key: NodeKey) -> Self {
+    pub fn new(component_type: MiniTypeId, key: NodeKey) -> Self {
         Self {
+            component_type,
             key,
             _marker: PhantomData,
         }
+    }
+}
+
+impl<T> From<&ComponentId<T>> for MiniTypeId {
+    fn from(component_id: &ComponentId<T>) -> Self {
+        component_id.component_type
     }
 }
 

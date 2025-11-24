@@ -1,6 +1,6 @@
-use crate::node::{Node, NodeId, NodeType};
+use crate::node::{Node, NodeId};
 use crate::storage::Storage;
-use crate::{NodeRef, NodeTrait};
+use crate::{MiniTypeId, NodeRef, NodeTrait};
 use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
 use std::mem::transmute;
@@ -8,7 +8,7 @@ use std::mem::transmute;
 pub struct TypeMap {
     map: HashMap<
         TypeId,
-        HashMap<NodeType, Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any> + Send + Sync>>,
+        HashMap<MiniTypeId, Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any> + Send + Sync>>,
     >,
 }
 
@@ -21,7 +21,7 @@ impl TypeMap {
 
     /// Registers a type `T` that can be converted to `Trait` using
     /// `to_trait_obj`.
-    pub fn register<T, Trait, F>(&mut self, node_type: NodeType, to_trait_obj: F)
+    pub fn register<T, Trait, F>(&mut self, node_type: MiniTypeId, to_trait_obj: F)
     where
         T: NodeRef + Node,
         Trait: NodeTrait + ?Sized + 'static,

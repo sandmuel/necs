@@ -13,9 +13,12 @@ use storage::Storage;
 mod component;
 pub use crate::node::Node;
 pub use component::ComponentId;
+pub use key::NodeKey;
+pub use mini_type_id::MiniTypeId;
 pub use storage::BorrowDropper;
-use storage::NodeKey;
 
+mod key;
+mod mini_type_id;
 mod node;
 mod node_map;
 pub mod storage;
@@ -40,7 +43,7 @@ impl World {
     {
         T::__register_node(&mut self.storage);
         self.node_map
-            .register::<T, dyn Node, _>(self.storage.nodes.node_type_of::<T>(), |x| Box::new(x));
+            .register::<T, dyn Node, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
     /*
     pub fn register_trait<T: NodeRef, Trait: NodeTrait + ?Sized>(&mut self) {

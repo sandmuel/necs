@@ -1,9 +1,10 @@
 mod component_storage;
-mod key;
+mod mini_type_map;
 mod node_storage;
 
+use crate::NodeKey;
 pub(crate) use component_storage::ComponentStorage;
-pub use key::NodeKey;
+pub use mini_type_map::MiniTypeMap;
 pub use node_storage::BorrowDropper;
 pub(crate) use node_storage::NodeStorage;
 use slotmap::SlotMap;
@@ -18,12 +19,12 @@ pub struct Storage {
 }
 
 impl Storage {
-    #[inline]
+    #[inline(always)]
     pub fn new() -> Self {
         Storage::default()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn mint_key(&mut self) -> NodeKey {
         self.key_factory.insert(())
     }

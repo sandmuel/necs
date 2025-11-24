@@ -324,14 +324,14 @@ impl ToTokens for GeneratedNodeRef {
         } else {
             quote! {
                 #[doc(hidden)]
-                borrowed: ::necs::BorrowDropper<'world>,
+                _borrowed: ::necs::BorrowDropper<'world>,
             }
         };
 
         let borrowed = if fields.is_empty() {
             quote! {}
         } else {
-            quote! { borrowed, }
+            quote! { _borrowed: borrowed, }
         };
 
         let struct_fields = fields.iter().map(|field| {
@@ -370,7 +370,7 @@ impl ToTokens for GeneratedNodeRef {
                 if let Type::Reference(type_ref) = &field.ty {
                     let inner_type = &type_ref.elem;
                     field_extractions.push(quote! {
-                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.instance));
+                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.node_type, id.instance));
                     });
                 }
 

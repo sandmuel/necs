@@ -1,10 +1,8 @@
+use crate::MiniTypeId;
+use crate::NodeKey;
 use crate::Storage;
-use crate::storage::NodeKey;
 use std::any::{Any, type_name};
 use std::marker::Tuple;
-
-/// A [`u16`] corresponding to a node's type.
-pub type NodeType = u16;
 
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
@@ -13,7 +11,7 @@ pub type NodeType = u16;
 pub struct NodeId {
     // TODO: is it safe having this buildable? If two different NodeTypes are given the same key,
     // there's chaos since multiple nodes can have the same component.
-    pub node_type: NodeType,
+    pub node_type: MiniTypeId,
     pub instance: NodeKey,
 }
 

@@ -1,4 +1,10 @@
 {
     "toolchains": [],
-    "editor.formatOnSave": false
+    "editor.formatOnSave": true,
+    "plugins": [
+        {
+            "type": "add",
+            "pluginName": "fleet.rust"
+        }
+    ]
 }

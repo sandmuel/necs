@@ -1,23 +1,13 @@
-use super::key::NodeKey;
+use super::{MiniTypeMap, NodeKey};
 use crate::component::ComponentId;
-use rustc_hash::FxHashMap as HashMap;
-use slotmap::SparseSecondaryMap;
-use slotmap::sparse_secondary::ValuesMut;
-use std::any::{Any, TypeId};
 use std::cell::SyncUnsafeCell;
 
 #[derive(Debug)]
-pub struct ComponentStorage {
-    // This is always a HashMap<TypeId, SparseSecondaryMap<ComponentId, T>>, but the
-    // SparseSecondaryMap is made dyn to avoid the need to downcast each value.
-    map: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
-}
+pub struct ComponentStorage(MiniTypeMap);
 
 impl<'a> ComponentStorage {
     pub(crate) fn new() -> Self {
-        Self {
-            map: HashMap::default(),
-        }
+        Self(MiniTypeMap::default())
     }
 
     /// Registers [T] as a component type.
@@ -34,12 +24,11 @@ impl<'a> ComponentStorage {
     ///
     /// components.register::<u32>();
     /// ```
-    pub fn register<T: 'static + Send + Sync>(&mut self) {
-        self.map
-            .entry(TypeId::of::<T>())
-            .or_insert(Box::new(
-                SparseSecondaryMap::<NodeKey, SyncUnsafeCell<T>>::new(),
-            ));
+    pub fn register<T>(&mut self)
+    where
+        T: Send + Sync + 'static,
+    {
+        self.0.register::<T, _>();
     }
 
     /// Inserts the given component into storage.
@@ -48,21 +37,12 @@ impl<'a> ComponentStorage {
     ///
     /// [`T`] must be registered with [`Self::register`] before calling this
     /// function.
-    pub fn insert<T: 'static + Send + Sync>(
-        &mut self,
-        key: NodeKey,
-        component: T,
-    ) -> ComponentId<T> {
-        // Safety: the type of the downcast is guaranteed to be correct since it is
-        // based on the same type as the key.
-        unsafe {
-            self.map
-                .get_mut(&TypeId::of::<T>())
-                .expect("the component type should be registered first")
-                .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .insert(key, component);
-            ComponentId::new(key)
-        }
+    pub fn insert<T>(&mut self, key: NodeKey, component: T) -> ComponentId<T>
+    where
+        T: 'static + Send + Sync,
+    {
+        self.0.insert::<T, _>(key, SyncUnsafeCell::new(component));
+        ComponentId::new(self.0.mini_type_of::<T>(), key)
     }
 
     /// Gets a mutable reference to an element of type `T` from the internal map
@@ -95,6 +75,7 @@ impl<'a> ComponentStorage {
     /// Use this method only when performance is critical and invariants can be
     /// manually guaranteed.
     #[allow(clippy::mut_from_ref)]
+    #[inline(always)]
     pub unsafe fn get_element_unchecked<T: 'static + Send + Sync>(
         &self,
         id: &ComponentId<T>,
@@ -103,37 +84,30 @@ impl<'a> ComponentStorage {
         // based on the same type as the key. The caller must guarantee that another
         // reference to this component does not exist.
         unsafe {
-            self.map
-                .get(&TypeId::of::<T>())
-                .expect("the component type should be registered first")
-                .downcast_ref_unchecked::<SparseSecondaryMap<NodeKey, SyncUnsafeCell<T>>>()
-                .get_unchecked(id.into())
+            self.0
+                .get_unchecked::<T, _>(id.into(), id.into())
+                .unwrap_or_else(|| panic!("component with id {:?} not found", id))
                 .get()
                 .as_mut_unchecked()
         }
     }
 
-    pub fn get_element<T: 'static + Send + Sync>(&mut self, id: &ComponentId<T>) -> Option<&mut T> {
-        // Safety: the type of the downcast is guaranteed to be correct since it is
-        // based on the same type as the key.
+    pub fn get_component<T: 'static + Send + Sync>(
+        &mut self,
+        id: &ComponentId<T>,
+    ) -> Option<&mut T> {
+        // Safety: the type of the downcast is guaranteed to be correct since it is on
+        // the key.
         unsafe {
-            self.map
-                .get_mut(&TypeId::of::<T>())
-                .expect("the component type should be registered first")
-                .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .get_mut(id.into())
+            self.0
+                .get_mut_unchecked::<T, _>(id.into(), id.into())
+                .map(|cell| cell.get_mut())
         }
     }
 
-    pub fn get_elements<T: 'static + Send + Sync>(&'a mut self) -> ValuesMut<'a, NodeKey, T> {
-        // Safety: the type of the downcast is guaranteed to be correct since it is
-        // based on the same type as the key.
-        unsafe {
-            self.map
-                .get_mut(&TypeId::of::<T>())
-                .expect("the component type should be registered first")
-                .downcast_mut_unchecked::<SparseSecondaryMap<NodeKey, T>>()
-                .values_mut()
-        }
+    pub fn get_components<T: 'static + Send + Sync>(
+        &'a mut self,
+    ) -> impl ExactSizeIterator<Item = &'a mut T> {
+        self.0.values_mut::<T, _>().map(|cell| cell.get_mut())
     }
 }
