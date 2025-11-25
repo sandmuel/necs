@@ -95,7 +95,9 @@ impl NodeStorage {
         })
     }
 
-    pub fn get_node_cells_unchecked<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = (&mut T::RecipeTuple, BorrowDropper<'_>)> {
+    pub unsafe fn get_node_cells_unchecked<T: NodeRef>(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&mut T::RecipeTuple, BorrowDropper<'_>)> {
         let node_cells = self.values::<T, _>();
         node_cells.map(|node_cell: &RecipeTupleCell<T::RecipeTuple>| {
             match node_cell

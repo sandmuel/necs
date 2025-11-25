@@ -218,6 +218,7 @@ dependencies = [
  "criterion",
  "necs_internal",
  "necs_macros",
+ "slotmap",
 ]
 
 [[package]]

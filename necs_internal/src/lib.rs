@@ -64,10 +64,17 @@ impl World {
 
         let mut nodes = Vec::with_capacity(ids.len());
 
-        let recipe_tuples = self.storage.nodes.get_node_cells_unchecked::<T>();
+        let recipe_tuples = unsafe { self.storage.nodes.get_node_cells_unchecked::<T>() };
 
         for ((recipe_tuple, borrow), id) in recipe_tuples.zip(ids) {
-            unsafe { nodes.push(T::__build_from_storage(recipe_tuple, borrow, &self.storage, id)) }
+            unsafe {
+                nodes.push(T::__build_from_storage(
+                    recipe_tuple,
+                    borrow,
+                    &self.storage,
+                    id,
+                ))
+            }
         }
 
         nodes

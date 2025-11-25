@@ -9,6 +9,7 @@ categories = ["game-development"]
 [dependencies]
 necs_internal = { path = "necs_internal" }
 necs_macros = { path = "necs_macros" }
+slotmap = "1.0.7"
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
