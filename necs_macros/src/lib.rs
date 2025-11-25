@@ -424,8 +424,7 @@ impl ToTokens for GeneratedNodeRef {
                 type Instance<'world> = #ident #world_and_generic_idents;
                 type RecipeTuple = #recipe_tuple;
 
-                unsafe fn __build_from_storage<'world>(storage: &'world ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
-                    let (recipe_tuple, borrowed) = unsafe { storage.nodes.get_element::<Self>(id) };
+                unsafe fn __build_from_storage<'world>(recipe_tuple: &'world mut Self::RecipeTuple, borrowed: ::necs::BorrowDropper<'world>, storage: &'world ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
                     #(#field_extractions)*
                     #ident {
                         #borrowed

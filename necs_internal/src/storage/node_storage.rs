@@ -25,8 +25,8 @@ impl Drop for BorrowDropper<'_> {
 
 /// Contains a node's data and whether it is borrowed. [`T`] is a tuple of a
 /// node's fields (#[ext] fields not included, those are stored as components).
-pub struct NodeCell<T> {
-    node: SyncUnsafeCell<T>,
+pub struct RecipeTupleCell<T> {
+    recipe_tuple: SyncUnsafeCell<T>,
     // Tracks whether this node is currently borrowed.
     borrowed: AtomicBool,
 }
@@ -52,8 +52,8 @@ impl NodeStorage {
         let node_type = self.mini_type_of::<T>();
         self.insert::<T, _>(
             key,
-            NodeCell {
-                node: SyncUnsafeCell::new(node),
+            RecipeTupleCell {
+                recipe_tuple: SyncUnsafeCell::new(node),
                 borrowed: AtomicBool::new(false),
             },
         );
@@ -69,7 +69,7 @@ impl NodeStorage {
     where
         T: NodeRef,
     {
-        let node_cell: &NodeCell<T::RecipeTuple> = unsafe {
+        let node_cell: &RecipeTupleCell<T::RecipeTuple> = unsafe {
             // TODO: ensure a custom NodeId can't be created to avoid a mismatch.
             self.get_unchecked::<T, _>(id.node_type, id.instance)
                 .unwrap()
@@ -79,7 +79,7 @@ impl NodeStorage {
             .compare_exchange(false, true, Acquire, Relaxed)
         {
             Ok(_) => (
-                unsafe { node_cell.node.get().as_mut_unchecked() },
+                unsafe { node_cell.recipe_tuple.get().as_mut_unchecked() },
                 BorrowDropper::new(&node_cell.borrowed),
             ),
             Err(_) => panic!("the same node should not be borrowed multiple times at once"),
@@ -92,6 +92,22 @@ impl NodeStorage {
         keys.map(move |node_key: NodeKey| NodeId {
             node_type,
             instance: node_key,
+        })
+    }
+
+    pub fn get_node_cells_unchecked<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = (&mut T::RecipeTuple, BorrowDropper<'_>)> {
+        let node_cells = self.values::<T, _>();
+        node_cells.map(|node_cell: &RecipeTupleCell<T::RecipeTuple>| {
+            match node_cell
+                .borrowed
+                .compare_exchange(false, true, Acquire, Relaxed)
+            {
+                Ok(_) => (
+                    unsafe { node_cell.recipe_tuple.get().as_mut_unchecked() },
+                    BorrowDropper::new(&node_cell.borrowed),
+                ),
+                Err(_) => panic!("the same node should not be borrowed multiple times at once"),
+            }
         })
     }
 }

@@ -1,6 +1,6 @@
-use crate::MiniTypeId;
 use crate::NodeKey;
 use crate::Storage;
+use crate::{BorrowDropper, MiniTypeId};
 use std::any::{Any, type_name};
 use std::marker::Tuple;
 
@@ -48,7 +48,12 @@ pub trait NodeRef: 'static + NodeTrait {
     /// # Safety
     /// The safety of this depends on the key-value pairs always being correct
     /// to ensure the safety of unchecked downcasts.
-    unsafe fn __build_from_storage(storage: &Storage, id: NodeId) -> Self::Instance<'_>;
+    unsafe fn __build_from_storage<'node>(
+        recipe_tuple: &'node mut Self::RecipeTuple,
+        borrow_dropper: BorrowDropper<'node>,
+        storage: &'node Storage,
+        id: NodeId,
+    ) -> Self::Instance<'node>;
 
     /// Registers this node to node storage and all fields with the `#[ext]`
     /// attribute to component storage.

@@ -30,7 +30,8 @@ impl TypeMap {
         let closure = move |storage: &Storage, id: NodeId| {
             // TODO: ensure get_node() casts back to the proper lifetime.
             let storage: &'static Storage = unsafe { transmute(storage) };
-            let node = unsafe { T::__build_from_storage(storage, id) };
+            let (recipe_tuple, borrow_dropper) = storage.nodes.get_element::<T>(id);
+            let node = unsafe { T::__build_from_storage(recipe_tuple, borrow_dropper, storage, id) };
             let trait_obj: Box<Trait> = to_trait_obj(node);
             Box::new(trait_obj) as Box<dyn Any>
         };

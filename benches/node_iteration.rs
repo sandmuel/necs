@@ -7,7 +7,6 @@ use criterion::{Criterion, criterion_group, criterion_main};
 struct Foo {
     a: u32,
     b: u32,
-    #[ext]
     c: u32,
 }
 
@@ -18,7 +17,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
     }
     let id = world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
-    c.bench_function("node_iteration", |b| b.iter(|| world.get_node::<Foo>(id)));
+    c.bench_function("node_iteration", |b| b.iter(|| {
+        for node in world.get_nodes::<Foo>() {
+        }
+    }));
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -56,15 +56,18 @@ impl World {
     }
     pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
         // The safety of this entirely depends on everything else not having issues.
-        unsafe { T::__build_from_storage(&self.storage, id) }
+        let (recipe_tuple, borrow_dropper) = self.storage.nodes.get_element::<T>(id);
+        unsafe { T::__build_from_storage(recipe_tuple, borrow_dropper, &self.storage, id) }
     }
     pub fn get_nodes<T: NodeRef>(&self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
 
         let mut nodes = Vec::with_capacity(ids.len());
 
-        for id in ids {
-            unsafe { nodes.push(T::__build_from_storage(&self.storage, id)) }
+        let recipe_tuples = self.storage.nodes.get_node_cells_unchecked::<T>();
+
+        for ((recipe_tuple, borrow), id) in recipe_tuples.zip(ids) {
+            unsafe { nodes.push(T::__build_from_storage(recipe_tuple, borrow, &self.storage, id)) }
         }
 
         nodes

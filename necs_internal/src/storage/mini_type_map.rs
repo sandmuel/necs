@@ -1,4 +1,4 @@
-use crate::storage::node_storage::NodeCell;
+use crate::storage::node_storage::RecipeTupleCell;
 use crate::{MiniTypeId, NodeKey, NodeRef};
 use rustc_hash::FxHashMap as HashMap;
 use slotmap::SparseSecondaryMap;
@@ -123,5 +123,5 @@ impl<T: Send + Sync + 'static> MiniTypeMapKey<OwnValue> for T {
 }
 pub(crate) struct RecipeTuple;
 impl<T: NodeRef> MiniTypeMapKey<RecipeTuple> for T {
-    type Value = NodeCell<T::RecipeTuple>;
+    type Value = RecipeTupleCell<T::RecipeTuple>;
 }
