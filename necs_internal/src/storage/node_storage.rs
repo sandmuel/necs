@@ -31,7 +31,7 @@ pub struct RecipeTupleCell<T> {
     borrowed: AtomicBool,
 }
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct NodeStorage(MiniTypeMap);
 
 impl NodeStorage {

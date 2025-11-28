@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use necs::storage::MiniTypeMap;
     use necs::{MiniTypeId, Node, NodeTrait, World, node};
 
     #[derive(Debug)]
@@ -86,15 +87,10 @@ mod tests {
 
     #[test]
     fn flamegraph_test() {
-        let mut world = World::new();
-        world.register_node::<flamegraph_test::Foo>();
-        for _ in 0..1_000_000 {
-            world.spawn_node(flamegraph_test::FooBuilder { a: 1, b: 2, c: 3 });
-        }
-        for _ in 0..100 {
-            for foo in world.get_nodes::<flamegraph_test::Foo>() {
-                *foo.b = 2;
-            }
+        let mut mini_ty_map = MiniTypeMap::default();
+        mini_ty_map.register::<u64, _>();
+        for _ in 0..1_000_000_000 {
+            let _ = mini_ty_map.values::<u64, _>();
         }
     }
 }

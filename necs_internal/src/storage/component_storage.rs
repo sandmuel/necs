@@ -2,7 +2,7 @@ use super::{MiniTypeMap, NodeKey};
 use crate::component::ComponentId;
 use std::cell::SyncUnsafeCell;
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct ComponentStorage(MiniTypeMap);
 
 impl<'a> ComponentStorage {

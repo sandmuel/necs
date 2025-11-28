@@ -1,14 +1,39 @@
 use crate::storage::node_storage::RecipeTupleCell;
 use crate::{MiniTypeId, NodeKey, NodeRef};
-use rustc_hash::FxHashMap as HashMap;
 use slotmap::SparseSecondaryMap;
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
+//use hashbrown::HashMap;
+use rustc_hash::FxHashMap as HashMap;
+
+#[cold]
+#[inline(never)]
+fn type_not_registered<T>() -> ! {
+    panic!(
+        "cannot get MiniTypeId for unregistered type {:?}",
+        type_name::<T>()
+    )
+}
+
+pub struct UselessWrapper {
+    nothing: HashMap<TypeId, MiniTypeId>,
+    pub data: Vec<Box<dyn Any + Send + Sync>>,
+}
+
+impl UselessWrapper {
+    pub fn new<T: Any + Send + Sync>(map: T) -> Self {
+        let mut data: Vec<Box<dyn Any + Send + Sync>> = Vec::new();
+        data.push(Box::new(map));
+        let mut nothing = HashMap::default();
+        nothing.insert(TypeId::of::<T>(), MiniTypeId::MAX);
+        Self { nothing, data }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct MiniTypeMap {
     id_map: HashMap<TypeId, MiniTypeId>,
-    data: Vec<Box<dyn Any + Send + Sync>>,
+    pub data: Vec<Box<dyn Any + Send + Sync>>, // TODO: unpub this. it is just for testing.
 }
 
 impl MiniTypeMap {
@@ -24,12 +49,10 @@ impl MiniTypeMap {
 
     #[inline]
     pub fn mini_type_of<T: 'static>(&self) -> MiniTypeId {
-        *self.id_map.get(&TypeId::of::<T>()).unwrap_or_else(|| {
-            panic!(
-                "cannot get MiniTypeId for unregistered type {:?}",
-                type_name::<T>()
-            )
-        })
+        *self
+            .id_map
+            .get(&TypeId::of::<T>())
+            .unwrap_or_else(|| type_not_registered::<T>())
     }
 
     #[inline]
@@ -94,7 +117,7 @@ impl MiniTypeMap {
         sub_map.values_mut()
     }
 
-    #[inline]
+    #[inline(never)]
     pub unsafe fn get_unchecked<T: MiniTypeMapKey<D>, D>(
         &self,
         mini_type_id: MiniTypeId,
@@ -103,12 +126,7 @@ impl MiniTypeMap {
         let sub_map = unsafe {
             self.data
                 .get(mini_type_id.index())
-                .unwrap_or_else(|| {
-                    panic!(
-                        "cannot get MiniTypeId for unregistered type {:?}",
-                        type_name::<T>()
-                    )
-                })
+                .unwrap_or_else(|| type_not_registered::<T>())
                 // As long as this function's invariant is upheld, this is safe.
                 .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T::Value>>()
         };
@@ -124,12 +142,7 @@ impl MiniTypeMap {
         let sub_map = unsafe {
             self.data
                 .get_mut(mini_type_id.index())
-                .unwrap_or_else(|| {
-                    panic!(
-                        "cannot get MiniTypeId for unregistered type {:?}",
-                        type_name::<T>()
-                    )
-                })
+                .unwrap_or_else(|| type_not_registered::<T>())
                 // As long as this function's invariant is upheld, this is safe.
                 .downcast_unchecked_mut::<SparseSecondaryMap<NodeKey, T::Value>>()
         };

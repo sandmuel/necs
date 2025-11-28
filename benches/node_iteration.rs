@@ -1,14 +1,16 @@
 #![feature(sync_unsafe_cell)]
 #![feature(ptr_as_ref_unchecked)]
-
-use necs_internal::*;
-use necs_macros::node;
-use std::any::{TypeId, type_name};
-use std::cell::SyncUnsafeCell;
+#![feature(downcast_unchecked)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use necs_internal::storage::MiniTypeMap;
-use slotmap::SlotMap;
+use necs_internal::storage::{MiniTypeMap, UselessWrapper};
+use necs_internal::*;
+use necs_macros::node;
+use slotmap::{SlotMap, SparseSecondaryMap};
+use std::any::{Any, type_name};
+use std::cell::SyncUnsafeCell;
+use std::hint::black_box;
+use std::marker::PhantomData;
 
 #[node]
 struct Foo {
@@ -47,24 +49,36 @@ fn criterion_benchmark(c: &mut Criterion) {
     mini_type_map.insert::<u64, _>(key, SyncUnsafeCell::from(8u64));
     let id = mini_type_map.mini_type_of::<u64>();
 
-    let idx = 2u16;
-    let a_vec = vec![1, 2, 3];
+    let useless_wrapper = UselessWrapper::new(SparseSecondaryMap::<NodeKey, u64>::default());
 
     c.bench_function("node_iteration", |b| {
         b.iter(|| unsafe {
-            let _ = &TypeId::of::<u64>();
-            a_vec.get(idx as usize).unwrap_or_else(|| {
-                panic!(
-                    "cannot get MiniTypeId for unregistered type {:?}",
-                    type_name::<u64>()
-                )
-            })
-            //mini_type_map.get_unchecked::<u64, _>(id, key);
-            //for node in mini_type_map.values::<u64, _>() {
-            //    let _ = node;
-            //}
+            black_box(mini_type_map.data.get(id.index())); // Takes ~0.2 ns
+            black_box(useless_wrapper.data.get(id.index())); // Takes ~0.2 ns
+            black_box(mysterious_8::<u64>(&mini_type_map.data, id, key)); // Takes ~9.5 ns
+            black_box(mysterious_8::<u64>(&useless_wrapper.data, id, key)); // Takes ~1.5 ns
         })
     });
+}
+
+#[inline(never)]
+fn mysterious_8<T: 'static + Send + Sync>(
+    vec: &Vec<Box<dyn Any + Send + Sync>>,
+    id: MiniTypeId,
+    key: NodeKey,
+) -> Option<&T> {
+    let sub_map = unsafe {
+        vec.get(id.index())
+            .unwrap_or_else(|| {
+                panic!(
+                    "cannot get MiniTypeId for unregistered type {:?}",
+                    type_name::<T>()
+                )
+            })
+            // As long as this function's invariant is upheld, this is safe.
+            .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T>>()
+    };
+    sub_map.get(key)
 }
 
 criterion_group!(benches, criterion_benchmark);
