@@ -1,6 +1,5 @@
 use crate::storage::node_storage::RecipeTupleCell;
 use crate::{MiniTypeId, NodeKey, NodeRef};
-use slotmap::SparseSecondaryMap;
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
 //use hashbrown::HashMap;
@@ -15,21 +14,6 @@ fn type_not_registered<T>() -> ! {
     )
 }
 
-pub struct UselessWrapper {
-    nothing: HashMap<TypeId, MiniTypeId>,
-    pub data: Vec<Box<dyn Any + Send + Sync>>,
-}
-
-impl UselessWrapper {
-    pub fn new<T: Any + Send + Sync>(map: T) -> Self {
-        let mut data: Vec<Box<dyn Any + Send + Sync>> = Vec::new();
-        data.push(Box::new(map));
-        let mut nothing = HashMap::default();
-        nothing.insert(TypeId::of::<T>(), MiniTypeId::MAX);
-        Self { nothing, data }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct MiniTypeMap {
     id_map: HashMap<TypeId, MiniTypeId>,
@@ -42,7 +26,7 @@ impl MiniTypeMap {
         if !self.id_map.contains_key(&type_id) {
             let mini_type_id = MiniTypeId::from(self.id_map.len());
             self.id_map.insert(type_id, mini_type_id);
-            let sub_map: SparseSecondaryMap<NodeKey, T::Value> = SparseSecondaryMap::default();
+            let sub_map: HashMap<NodeKey, T::Value> = HashMap::default();
             self.data.push(Box::new(sub_map));
         }
     }
@@ -65,13 +49,13 @@ impl MiniTypeMap {
                 .get_unchecked_mut(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_mut::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.insert(key, item);
     }
 
     #[inline]
-    pub fn keys<T: MiniTypeMapKey<D>, D>(&self) -> impl ExactSizeIterator<Item = NodeKey> {
+    pub fn keys<T: MiniTypeMapKey<D>, D>(&self) -> impl ExactSizeIterator<Item = &NodeKey> {
         let mini_type_id = self.mini_type_of::<T>();
         let sub_map = unsafe {
             // SAFETY: The call to mini_type_of() would have panicked if the type wasn't
@@ -80,7 +64,7 @@ impl MiniTypeMap {
                 .get_unchecked(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.keys()
     }
@@ -95,7 +79,7 @@ impl MiniTypeMap {
                 .get_unchecked(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.values()
     }
@@ -112,12 +96,12 @@ impl MiniTypeMap {
                 .get_unchecked_mut(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_mut::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.values_mut()
     }
 
-    #[inline(never)]
+    #[inline]
     pub unsafe fn get_unchecked<T: MiniTypeMapKey<D>, D>(
         &self,
         mini_type_id: MiniTypeId,
@@ -128,9 +112,9 @@ impl MiniTypeMap {
                 .get(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
                 // As long as this function's invariant is upheld, this is safe.
-                .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
         };
-        sub_map.get(key)
+        sub_map.get(&key)
     }
 
     #[inline]
@@ -144,9 +128,9 @@ impl MiniTypeMap {
                 .get_mut(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
                 // As long as this function's invariant is upheld, this is safe.
-                .downcast_unchecked_mut::<SparseSecondaryMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
         };
-        sub_map.get_mut(key)
+        sub_map.get_mut(&key)
     }
 }
 
