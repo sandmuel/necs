@@ -5,7 +5,6 @@ mod node_storage;
 use crate::NodeKey;
 pub(crate) use component_storage::ComponentStorage;
 pub use mini_type_map::MiniTypeMap;
-pub use mini_type_map::UselessWrapper;
 pub use node_storage::BorrowDropper;
 pub(crate) use node_storage::NodeStorage;
 use slotmap::SlotMap;

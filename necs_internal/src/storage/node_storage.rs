@@ -89,9 +89,9 @@ impl NodeStorage {
     pub fn get_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
         let node_type = self.mini_type_of::<T>();
         let keys = self.keys::<T, _>();
-        keys.map(move |node_key: NodeKey| NodeId {
+        keys.map(move |node_key: &NodeKey| NodeId {
             node_type,
-            instance: node_key,
+            instance: *node_key,
         })
     }
 

@@ -3,14 +3,14 @@
 #![feature(downcast_unchecked)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use necs_internal::storage::{MiniTypeMap, UselessWrapper};
+use necs_internal::storage::MiniTypeMap;
 use necs_internal::*;
 use necs_macros::node;
 use slotmap::{SlotMap, SparseSecondaryMap};
 use std::any::{Any, type_name};
 use std::cell::SyncUnsafeCell;
+use rustc_hash::FxHashMap as HashMap;
 use std::hint::black_box;
-use std::marker::PhantomData;
 
 #[node]
 struct Foo {
@@ -27,14 +27,15 @@ fn criterion_benchmark(c: &mut Criterion) {
             || {
                 let mut world = World::new();
                 world.register_node::<Foo>();
-                for _ in 0..1_000_000 {
+                for _ in 0..1 {
                     world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
                 }
-                world
+                let id = world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
+                (world, id)
             },
             // code being measured
-            |mut world| {
-                world.get_nodes::<Foo>();
+            |(mut world, id)| {
+                world.get_node::<Foo>(id);
             },
             criterion::BatchSize::LargeInput,
         );
@@ -49,36 +50,37 @@ fn criterion_benchmark(c: &mut Criterion) {
     mini_type_map.insert::<u64, _>(key, SyncUnsafeCell::from(8u64));
     let id = mini_type_map.mini_type_of::<u64>();
 
-    let useless_wrapper = UselessWrapper::new(SparseSecondaryMap::<NodeKey, u64>::default());
+    let mut internal_map = HashMap::<NodeKey, u64>::default();
+    internal_map.insert(key, 8u64);
+
+    let mut a_vec = Vec::<Box<dyn Any>>::default();
+    a_vec.push(Box::new(internal_map));
+
+    let mut world = World::new();
+    world.register_node::<Foo>();
+    for _ in 0..1 {
+        world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
+    }
+    let id = world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
 
     c.bench_function("node_iteration", |b| {
         b.iter(|| unsafe {
-            black_box(mini_type_map.data.get(id.index())); // Takes ~0.2 ns
-            black_box(useless_wrapper.data.get(id.index())); // Takes ~0.2 ns
-            black_box(mysterious_8::<u64>(&mini_type_map.data, id, key)); // Takes ~9.5 ns
-            black_box(mysterious_8::<u64>(&useless_wrapper.data, id, key)); // Takes ~1.5 ns
+            black_box(world.get_node::<Foo>(id));
+            /*
+            let sub_map = unsafe {
+                a_vec
+                    .get(id.index())
+                    .unwrap_or_else(|| panic!("cannot get MiniTypeId for unregistered type u64"))
+                    // As long as this function's invariant is upheld, this is safe.
+                    .downcast_unchecked_ref::<HashMap<NodeKey, u64>>()
+            };
+
+             */
+            //black_box(sub_map.get(&key));
+            //black_box(mini_type_map.mini_type_of::<u64>()); // Takes ~0.2 ns
+            //black_box(mini_type_map.get_unchecked::<u64, _>(id, key));
         })
     });
-}
-
-#[inline(never)]
-fn mysterious_8<T: 'static + Send + Sync>(
-    vec: &Vec<Box<dyn Any + Send + Sync>>,
-    id: MiniTypeId,
-    key: NodeKey,
-) -> Option<&T> {
-    let sub_map = unsafe {
-        vec.get(id.index())
-            .unwrap_or_else(|| {
-                panic!(
-                    "cannot get MiniTypeId for unregistered type {:?}",
-                    type_name::<T>()
-                )
-            })
-            // As long as this function's invariant is upheld, this is safe.
-            .downcast_unchecked_ref::<SparseSecondaryMap<NodeKey, T>>()
-    };
-    sub_map.get(key)
 }
 
 criterion_group!(benches, criterion_benchmark);

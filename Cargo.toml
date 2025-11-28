@@ -2,7 +2,7 @@
 name = "necs"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "Apache-2.0"
 keywords = ["gamedev"]
 categories = ["game-development"]
 
@@ -10,6 +10,7 @@ categories = ["game-development"]
 necs_internal = { path = "necs_internal" }
 necs_macros = { path = "necs_macros" }
 slotmap = "1.0.7"
+rustc-hash = "2.1.1"
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
