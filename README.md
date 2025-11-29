@@ -1,5 +1,5 @@
 # NECS
-NECS (Not Entity Component System) is a crate aiming to strike a good balance between ECS and traditional object management.
+NECS (Not Entity Component System) is a crate aiming to strike a good balance between ECS patterns and traditional object management.
 
 ## Features
 
