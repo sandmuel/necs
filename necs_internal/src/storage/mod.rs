@@ -2,15 +2,17 @@ mod component_storage;
 mod mini_type_map;
 mod node_storage;
 
-use crate::NodeKey;
 pub(crate) use component_storage::ComponentStorage;
+pub use mini_type_map::MiniTypeId;
 pub use mini_type_map::MiniTypeMap;
+pub use mini_type_map::MiniTypeMapKey;
 pub use node_storage::BorrowDropper;
 pub(crate) use node_storage::NodeStorage;
 use slotmap::SlotMap;
+pub use crate::storage::mini_type_map::NodeKey;
 
 // TODO: Merge this with World if no cache impact.
-//#[derive(Debug)]
+#[derive(Debug)]
 pub struct Storage {
     // This map only serves to generate unique keys.
     pub(crate) key_factory: SlotMap<NodeKey, ()>,

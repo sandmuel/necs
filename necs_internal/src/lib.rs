@@ -5,7 +5,7 @@
 #![feature(ptr_as_ref_unchecked)]
 
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
-use crate::node_map::TypeMap;
+use crate::trait_map::TraitMap;
 pub use necs_macros::node;
 use slotmap::SparseSecondaryMap;
 use storage::Storage;
@@ -13,15 +13,12 @@ use storage::Storage;
 mod component;
 pub use crate::node::Node;
 pub use component::ComponentId;
-pub use key::NodeKey;
-pub use mini_type_id::MiniTypeId;
 pub use storage::BorrowDropper;
+pub use crate::storage::NodeKey;
 
-mod key;
-mod mini_type_id;
 mod node;
-mod node_map;
 pub mod storage;
+mod trait_map;
 
 pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 
@@ -29,7 +26,7 @@ pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 pub struct World {
     pub(crate) storage: Storage,
     // Maps type ids to types, allowing us to work on nodes without knowing their types.
-    pub node_map: TypeMap,
+    pub node_map: TraitMap,
 }
 
 impl World {
@@ -102,7 +99,7 @@ impl Default for World {
     fn default() -> Self {
         Self {
             storage: Storage::new(),
-            node_map: TypeMap::new(),
+            node_map: TraitMap::new(),
         }
     }
 }

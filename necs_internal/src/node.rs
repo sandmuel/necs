@@ -1,6 +1,7 @@
+use crate::BorrowDropper;
 use crate::NodeKey;
 use crate::Storage;
-use crate::{BorrowDropper, MiniTypeId};
+use crate::storage::MiniTypeId;
 use std::any::{Any, type_name};
 use std::marker::Tuple;
 

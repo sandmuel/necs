@@ -1,18 +1,18 @@
 use crate::node::{Node, NodeId};
-use crate::storage::Storage;
-use crate::{MiniTypeId, NodeRef, NodeTrait};
+use crate::storage::{MiniTypeId, Storage};
+use crate::{NodeRef, NodeTrait};
 use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
 use std::mem::transmute;
 
-pub struct TypeMap {
+pub struct TraitMap {
     map: HashMap<
         TypeId,
         HashMap<MiniTypeId, Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any> + Send + Sync>>,
     >,
 }
 
-impl TypeMap {
+impl TraitMap {
     pub fn new() -> Self {
         Self {
             map: HashMap::default(),

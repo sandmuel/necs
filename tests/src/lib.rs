@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use necs::storage::MiniTypeMap;
-    use necs::{MiniTypeId, Node, NodeTrait, World, node};
+    use necs::storage::{MiniTypeId, MiniTypeMap};
+    use necs::{Node, NodeTrait, World, node};
 
     #[derive(Debug)]
     struct Useless;

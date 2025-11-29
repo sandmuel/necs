@@ -23,9 +23,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
     let id = world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
 
-    c.bench_function("node_iteration", |b| b.iter(|| {
-        black_box(world.get_node::<Foo>(id));
-    }));
+    c.bench_function("node_iteration", |b| {
+        b.iter(|| {
+            black_box(world.get_node::<Foo>(id));
+        })
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);
