@@ -2,8 +2,8 @@ use crate::storage::node_storage::RecipeTupleCell;
 use crate::{MiniTypeId, NodeKey, NodeRef};
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
-//use hashbrown::HashMap;
-use rustc_hash::FxHashMap as HashMap;
+use std::fmt::Debug;
+use foldhash::HashMap;
 
 #[cold]
 #[inline(never)]
@@ -17,7 +17,7 @@ fn type_not_registered<T>() -> ! {
 #[derive(Debug, Default)]
 pub struct MiniTypeMap {
     id_map: HashMap<TypeId, MiniTypeId>,
-    pub data: Vec<Box<dyn Any + Send + Sync>>, // TODO: unpub this. it is just for testing.
+    data: Vec<Box<dyn Any + Send + Sync>>,
 }
 
 impl MiniTypeMap {
@@ -111,7 +111,7 @@ impl MiniTypeMap {
             self.data
                 .get(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
-                // As long as this function's invariant is upheld, this is safe.
+                // SAFETY: the caller guarantees T corresponds to mini_type_id.
                 .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.get(&key)
@@ -127,7 +127,7 @@ impl MiniTypeMap {
             self.data
                 .get_mut(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
-                // As long as this function's invariant is upheld, this is safe.
+                // SAFETY: the caller guarantees T corresponds to mini_type_id.
                 .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.get_mut(&key)

@@ -1,7 +1,7 @@
 use crate::node::{Node, NodeId};
 use crate::storage::Storage;
 use crate::{MiniTypeId, NodeRef, NodeTrait};
-use hashbrown::HashMap;
+use foldhash::HashMap;
 use std::any::{Any, TypeId, type_name};
 use std::mem::transmute;
 
