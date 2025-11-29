@@ -1,9 +1,9 @@
-use crate::{MiniTypeId, NodeKey};
+use crate::storage::{MiniTypeId, NodeKey};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 
-/// A wrapper around [`NodeKey`], but with [`T`] included to support
-/// downcasting.
+/// A wrapper around [`NodeKey`], along with [`T`] and [`MiniTypeId`] for
+/// efficient downcasting.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ComponentId<T> {
     component_type: MiniTypeId,
@@ -38,15 +38,15 @@ impl<T> ComponentId<T> {
     /// # use necs::{NodeId, ComponentId};
     /// # use necs::NodeKey;
     /// # use slotmap::Key;
-    /// use necs_internal::MiniTypeId;
+    /// use necs_internal::storage::MiniTypeId;
     /// let node_id: NodeId;
     /// # node_id = NodeId {
     /// #     node_type: MiniTypeId::from(0),
     /// #     instance: NodeKey::null(),
     /// # };
-    /// let instance = ComponentId::<u32>::new(node_id.node_type, node_id.instance);
+    /// let instance = unsafe { ComponentId::<u32>::new(node_id.node_type, node_id.instance) };
     /// ```
-    pub fn new(component_type: MiniTypeId, key: NodeKey) -> Self {
+    pub unsafe fn new(component_type: MiniTypeId, key: NodeKey) -> Self {
         Self {
             component_type,
             key,

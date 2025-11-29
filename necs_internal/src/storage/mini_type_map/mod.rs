@@ -1,9 +1,15 @@
 use crate::storage::node_storage::RecipeTupleCell;
-use crate::{MiniTypeId, NodeKey, NodeRef};
+use crate::NodeRef;
+use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
-//use hashbrown::HashMap;
-use rustc_hash::FxHashMap as HashMap;
+use std::fmt::Debug;
+
+mod mini_type_id;
+pub use mini_type_id::MiniTypeId;
+
+mod key;
+pub use key::NodeKey;
 
 #[cold]
 #[inline(never)]
@@ -17,10 +23,13 @@ fn type_not_registered<T>() -> ! {
 #[derive(Debug, Default)]
 pub struct MiniTypeMap {
     id_map: HashMap<TypeId, MiniTypeId>,
-    pub data: Vec<Box<dyn Any + Send + Sync>>, // TODO: unpub this. it is just for testing.
+    data: Vec<Box<dyn Any + Send + Sync>>,
 }
 
 impl MiniTypeMap {
+    /// Registers type [`T`] to this map.
+    ///
+    /// We can get the [`MiniTypeId`] of [`T`] using [`Self::mini_type_of`].
     pub fn register<T: MiniTypeMapKey<D>, D>(&mut self) {
         let type_id = TypeId::of::<T>();
         if !self.id_map.contains_key(&type_id) {
@@ -31,6 +40,7 @@ impl MiniTypeMap {
         }
     }
 
+    /// Returns the [`MiniTypeId`] corresponding to [`T`].
     #[inline]
     pub fn mini_type_of<T: 'static>(&self) -> MiniTypeId {
         *self
@@ -111,7 +121,7 @@ impl MiniTypeMap {
             self.data
                 .get(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
-                // As long as this function's invariant is upheld, this is safe.
+                // SAFETY: the caller guarantees T corresponds to mini_type_id.
                 .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.get(&key)
@@ -127,7 +137,7 @@ impl MiniTypeMap {
             self.data
                 .get_mut(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
-                // As long as this function's invariant is upheld, this is safe.
+                // SAFETY: the caller guarantees T corresponds to mini_type_id.
                 .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
         };
         sub_map.get_mut(&key)

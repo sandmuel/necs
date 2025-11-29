@@ -2,7 +2,7 @@ use super::{MiniTypeMap, NodeKey};
 use crate::component::ComponentId;
 use std::cell::SyncUnsafeCell;
 
-//#[derive(Debug)]
+#[derive(Debug)]
 pub struct ComponentStorage(MiniTypeMap);
 
 impl<'a> ComponentStorage {
@@ -42,7 +42,7 @@ impl<'a> ComponentStorage {
         T: 'static + Send + Sync,
     {
         self.0.insert::<T, _>(key, SyncUnsafeCell::new(component));
-        ComponentId::new(self.0.mini_type_of::<T>(), key)
+        unsafe { ComponentId::new(self.0.mini_type_of::<T>(), key) }
     }
 
     /// Gets a mutable reference to an element of type `T` from the internal map
