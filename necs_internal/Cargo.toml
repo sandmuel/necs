@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 slotmap = "1.0.7"
-foldhash = "0.2.0"
+rustc-hash = "2.1.1"
 necs_macros = { path = "../necs_macros" }
 
 [dev-dependencies]

@@ -3,7 +3,7 @@ use crate::{MiniTypeId, NodeKey, NodeRef};
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
 use std::fmt::Debug;
-use foldhash::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 #[cold]
 #[inline(never)]
