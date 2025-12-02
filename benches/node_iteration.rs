@@ -5,7 +5,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use necs_internal::*;
 use necs_macros::node;
-use std::any::Any;
 use std::hint::black_box;
 
 #[node]

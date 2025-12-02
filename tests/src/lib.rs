@@ -36,7 +36,7 @@ mod tests {
         let mut world = World::new();
         world.register_node::<Foo<u32>>();
         world
-            .node_map
+            .trait_map
             .register::<Foo<u32>, dyn Process, _>(MiniTypeId::from(0), |x| Box::new(x));
 
         let node_id = world.spawn_node(FooBuilder {

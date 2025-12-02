@@ -1,5 +1,5 @@
-use crate::storage::node_storage::RecipeTupleCell;
 use crate::NodeRef;
+use crate::storage::node_storage::RecipeTupleCell;
 use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
 use std::cell::SyncUnsafeCell;
