@@ -24,7 +24,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("node_iteration", |b| {
         b.iter(|| {
-            black_box(world.get_node::<Foo>(id));
+            for node in world.get_node_ids::<Foo>() {
+                black_box(world.get_node::<Foo>(node));
+            }
         })
     });
 }

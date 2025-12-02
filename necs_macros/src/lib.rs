@@ -158,7 +158,7 @@ impl ToTokens for GeneratedNodeBuilder {
 
                     if has_ext {
                         quote! {
-                            storage.components.insert(key, self.#field_name);
+                            storage.components.insert(node_id.instance, self.#field_name);
                         }
                     } else {
                         quote! {}
@@ -177,14 +177,13 @@ impl ToTokens for GeneratedNodeBuilder {
                 });
 
                 quote! {
-                    let key = storage.mint_key();
+                    let node_id = storage.nodes.spawn::<Self::AsNodeRef>((#(#tuple_fields,)*));
                     #(#assignments)*
-                    storage.nodes.spawn::<Self::AsNodeRef>(key, (#(#tuple_fields,)*))
+                    node_id
                 }
             }
             Fields::Unit => quote! {
-                let key = storage.mint_key();
-                storage.nodes.spawn::<Self::AsNodeRef>(key, ())
+                storage.nodes.spawn::<Self::AsNodeRef>(())
             },
             _ => unreachable!("struct fields should not be unnamed"),
         };

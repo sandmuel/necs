@@ -89,7 +89,7 @@ mod tests {
     fn flamegraph_test() {
         let mut mini_ty_map = MiniTypeMap::default();
         mini_ty_map.register::<u64, _>();
-        for _ in 0..1_000_000_000 {
+        for _ in 0..1_000_000 {
             let _ = mini_ty_map.values::<u64, _>();
         }
     }

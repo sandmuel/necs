@@ -8,7 +8,6 @@ pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::trait_map::TraitMap;
 pub use necs_macros::node;
 use slotmap::SparseSecondaryMap;
-use std::sync::RwLock;
 use storage::Storage;
 
 mod component;
@@ -25,9 +24,9 @@ pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
 pub struct World {
-    pub(crate) storage: RwLock<Storage>,
+    pub(crate) storage: Storage,
     // Maps type ids to types, allowing us to work on nodes without knowing their types.
-    pub trait_map: RwLock<TraitMap>, // TODO: Or do I just make the whole world RwLock?
+    pub trait_map: TraitMap, // TODO: Or do I just make the whole world RwLock?
 }
 
 impl World {
@@ -35,16 +34,13 @@ impl World {
         Self::default()
     }
 
-    pub fn register_node<T>(&self)
+    pub fn register_node<T>(&mut self)
     where
         T: NodeRef,
     {
-        let storage_read = self.storage.write().unwrap();
-        T::__register_node(&storage_read);
+        T::__register_node(&mut self.storage);
         self.trait_map
-            .write()
-            .unwrap()
-            .register::<T, dyn Node, _>(storage_read.nodes.mini_type_of::<T>(), |x| Box::new(x));
+            .register::<T, dyn Node, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
     /*
     pub fn register_trait<T: NodeRef, Trait: NodeTrait + ?Sized>(&mut self) {
@@ -53,13 +49,12 @@ impl World {
     }
      */
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
-        node.__move_to_storage(&mut self.storage.write().unwrap())
+        node.__move_to_storage(&mut self.storage)
     }
     pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
-        let storage_read = self.storage.write().unwrap();
         // The safety of this entirely depends on everything else not having issues.
-        let (recipe_tuple, borrow_dropper) = storage_read.nodes.get_element::<T>(id);
-        unsafe { T::__build_from_storage(recipe_tuple, borrow_dropper, &storage_read, id) }
+        let (recipe_tuple, borrow_dropper) = self.storage.nodes.get_element::<T>(id);
+        unsafe { T::__build_from_storage(recipe_tuple, borrow_dropper, &self.storage, id) }
     }
     pub fn get_nodes<T: NodeRef>(&self) -> Vec<T::Instance<'_>> {
         let ids = self.get_node_ids::<T>();
@@ -73,7 +68,7 @@ impl World {
                 nodes.push(T::__build_from_storage(
                     recipe_tuple,
                     borrow,
-                    &self.storage.read().unwrap(),
+                    &self.storage,
                     id,
                 ))
             }
@@ -82,7 +77,7 @@ impl World {
         nodes
     }
     pub fn get_node_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
-        self.storage.read().unwrap().nodes.get_ids::<T>()
+        self.storage.nodes.get_ids::<T>()
     }
 
     /// Gets a node of type [T].
@@ -95,10 +90,7 @@ impl World {
     /// The node associated with the given [`NodeId`] must be of type [T].
     // TODO: Change panic doc ^
     pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&self, id: NodeId) -> Box<T> {
-        self.trait_map
-            .read()
-            .unwrap()
-            .get_node::<T>(&self.storage.read().unwrap(), id)
+        self.trait_map.get_node::<T>(&self.storage, id)
     }
 }
 
