@@ -20,7 +20,6 @@ fn criterion_benchmark(c: &mut Criterion) {
     for _ in 0..1_000_000 {
         world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
     }
-    let id = world.spawn_node(FooBuilder { a: 1, b: 2, c: 3 });
 
     c.bench_function("node_iteration", |b| {
         b.iter(|| {
