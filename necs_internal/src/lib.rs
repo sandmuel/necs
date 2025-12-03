@@ -12,9 +12,9 @@ use storage::Storage;
 
 mod component;
 pub use crate::node::Node;
+pub use crate::storage::NodeKey;
 pub use component::ComponentId;
 pub use storage::BorrowDropper;
-pub use crate::storage::NodeKey;
 
 mod node;
 pub mod storage;
@@ -26,7 +26,7 @@ pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 pub struct World {
     pub(crate) storage: Storage,
     // Maps type ids to types, allowing us to work on nodes without knowing their types.
-    pub node_map: TraitMap,
+    pub trait_map: TraitMap, // TODO: Or do I just make the whole world RwLock?
 }
 
 impl World {
@@ -39,7 +39,7 @@ impl World {
         T: NodeRef,
     {
         T::__register_node(&mut self.storage);
-        self.node_map
+        self.trait_map
             .register::<T, dyn Node, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
     /*
@@ -90,8 +90,7 @@ impl World {
     /// The node associated with the given [`NodeId`] must be of type [T].
     // TODO: Change panic doc ^
     pub fn get_node_resilient<T: 'static + NodeTrait + ?Sized>(&self, id: NodeId) -> Box<T> {
-        // The safety of this entirely depends on everything else not having issues.
-        self.node_map.get_node::<T>(&self.storage, id)
+        self.trait_map.get_node::<T>(&self.storage, id)
     }
 }
 
@@ -99,7 +98,7 @@ impl Default for World {
     fn default() -> Self {
         Self {
             storage: Storage::new(),
-            node_map: TraitMap::new(),
+            trait_map: TraitMap::new(),
         }
     }
 }

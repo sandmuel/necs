@@ -5,7 +5,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use necs_internal::*;
 use necs_macros::node;
-use std::any::Any;
 use std::hint::black_box;
 
 #[node]
@@ -25,7 +24,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("node_iteration", |b| {
         b.iter(|| {
-            black_box(world.get_node::<Foo>(id));
+            for node in world.get_node_ids::<Foo>() {
+                black_box(world.get_node::<Foo>(node));
+            }
         })
     });
 }

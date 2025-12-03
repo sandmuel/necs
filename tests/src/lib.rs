@@ -36,7 +36,7 @@ mod tests {
         let mut world = World::new();
         world.register_node::<Foo<u32>>();
         world
-            .node_map
+            .trait_map
             .register::<Foo<u32>, dyn Process, _>(MiniTypeId::from(0), |x| Box::new(x));
 
         let node_id = world.spawn_node(FooBuilder {
@@ -89,7 +89,7 @@ mod tests {
     fn flamegraph_test() {
         let mut mini_ty_map = MiniTypeMap::default();
         mini_ty_map.register::<u64, _>();
-        for _ in 0..1_000_000_000 {
+        for _ in 0..1_000_000 {
             let _ = mini_ty_map.values::<u64, _>();
         }
     }

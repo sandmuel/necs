@@ -158,7 +158,7 @@ impl ToTokens for GeneratedNodeBuilder {
 
                     if has_ext {
                         quote! {
-                            storage.components.insert(key, self.#field_name);
+                            storage.components.insert(node_id.instance, self.#field_name);
                         }
                     } else {
                         quote! {}
@@ -177,14 +177,13 @@ impl ToTokens for GeneratedNodeBuilder {
                 });
 
                 quote! {
-                    let key = storage.mint_key();
+                    let node_id = storage.nodes.spawn::<Self::AsNodeRef>((#(#tuple_fields,)*));
                     #(#assignments)*
-                    storage.nodes.spawn::<Self::AsNodeRef>(key, (#(#tuple_fields,)*))
+                    node_id
                 }
             }
             Fields::Unit => quote! {
-                let key = storage.mint_key();
-                storage.nodes.spawn::<Self::AsNodeRef>(key, ())
+                storage.nodes.spawn::<Self::AsNodeRef>(())
             },
             _ => unreachable!("struct fields should not be unnamed"),
         };
@@ -471,22 +470,11 @@ impl ToTokens for GeneratedNodeRef {
 /// `MyNode` to enable advanced functionality.
 #[proc_macro_attribute]
 pub fn node(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let decl_line = item
-        .clone()
-        .into_iter()
-        .next()
-        .unwrap()
-        .span()
-        .start()
-        .line();
-    let mod_name = syn::Ident::new(
-        &format!("necs_node_{}", decl_line),
-        proc_macro2::Span::call_site(),
-    );
     let node_builder = item.clone();
     let node_ref = item;
     let node_builder = syn::parse_macro_input!(node_builder as GeneratedNodeBuilder);
     let node_ref = syn::parse_macro_input!(node_ref as GeneratedNodeRef);
+    let mod_name = format_ident!("__necs_macro_{}", node_ref.ident.to_string().to_lowercase());
     quote! {
         mod #mod_name {
             use super::*;
