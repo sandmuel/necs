@@ -35,9 +35,13 @@ mod tests {
     fn register_spawn_retrieve() {
         let mut world = World::new();
         world.register_node::<Foo<u32>>();
+        world.register_trait::<Foo<u32>, dyn Process>();
+        /*
         world
             .trait_map
             .register::<Foo<u32>, dyn Process, _>(MiniTypeId::from(0), |x| Box::new(x));
+            
+         */
 
         let node_id = world.spawn_node(FooBuilder {
             x: Useless,

@@ -42,12 +42,10 @@ impl World {
         self.trait_map
             .register::<T, dyn Node, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
-    /*
-    pub fn register_trait<T: NodeRef, Trait: NodeTrait + ?Sized>(&mut self) {
-        self.node_map
-            .register::<T, Trait, _>(self.storage.nodes.node_type_of::<T>(), |x| Box::new(x));
+    pub fn register_trait<T: NodeRef<Instance<'static> = Trait>, Trait: NodeTrait + 'static>(&mut self) {
+        self.trait_map
+            .register::<T, Trait, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
-     */
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
         node.__move_to_storage(&mut self.storage)
     }
