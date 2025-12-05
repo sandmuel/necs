@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-/// Unique identifier for a type registered in [`super::MiniTypeMap`].
+/// A unique identifier for a type registered in [`super::MiniTypeMap`].
 /// Effectively just a lighter [`std::any::TypeId`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MiniTypeId(u16);

@@ -9,11 +9,9 @@ categories = ["game-development"]
 [dependencies]
 necs_internal = { path = "necs_internal" }
 necs_macros = { path = "necs_macros" }
-slotmap = "1.0.7"
-rustc-hash = "2.1.1"
 
 [dev-dependencies]
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8.0", features = ["html_reports"] }
 
 [[bench]]
 name = "node_iteration"
