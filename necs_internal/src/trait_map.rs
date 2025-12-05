@@ -3,6 +3,7 @@ use crate::storage::{MiniTypeId, Storage};
 use crate::{NodeRef, NodeTrait};
 use rustc_hash::FxHashMap as HashMap;
 use std::any::{Any, TypeId, type_name};
+use std::fmt::{Debug, Formatter};
 use std::mem::transmute;
 
 pub struct TraitMap {
@@ -10,12 +11,56 @@ pub struct TraitMap {
         TypeId,
         HashMap<MiniTypeId, Box<dyn Fn(&Storage, NodeId) -> Box<dyn Any> + Send + Sync>>,
     >,
+    trait_names: HashMap<TypeId, &'static str>,
+    node_names: HashMap<MiniTypeId, &'static str>,
+}
+
+impl Debug for TraitMap {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let trait_type_keys = self.map.keys();
+        if trait_type_keys.len() == 0 {
+            return write!(f, "{{}}");
+        }
+        write!(f, "{{")?;
+        if f.alternate() {
+            write!(f, "\n")?;
+        }
+        for (i, trait_type_key) in trait_type_keys.enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+                if f.alternate() {
+                    write!(f, "\n")?;
+                }
+            }
+            let trait_name = self.trait_names.get(trait_type_key).unwrap();
+            let registered_nodes = self.map[&trait_type_key]
+                .keys()
+                .map(|x| self.node_names.get(x).unwrap());
+            write!(f, "    {}: [", trait_name)?;
+            for (i, node) in registered_nodes.enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                    if f.alternate() {
+                        write!(f, "\n    ")?;
+                    }
+                }
+                write!(f, "{}", node)?;
+            }
+            write!(f, "]")?;
+        }
+        if f.alternate() {
+            write!(f, ",\n")?;
+        }
+        write!(f, "}}")
+    }
 }
 
 impl TraitMap {
     pub fn new() -> Self {
         Self {
             map: HashMap::default(),
+            trait_names: HashMap::default(),
+            node_names: HashMap::default(),
         }
     }
 
@@ -41,6 +86,11 @@ impl TraitMap {
             .entry(TypeId::of::<Trait>())
             .or_default()
             .insert(node_type, Box::new(closure));
+
+        self.trait_names
+            .entry(TypeId::of::<Trait>())
+            .or_insert(type_name::<Trait>());
+        self.node_names.entry(node_type).or_insert(type_name::<T>());
     }
 
     pub fn get_node<Trait>(&self, storage: &Storage, id: NodeId) -> Box<Trait>
