@@ -38,17 +38,24 @@ impl Debug for TraitMap {
                 .keys()
                 .map(|x| self.node_names.get(x).unwrap());
             write!(f, "    {}: [", trait_name)?;
+            if f.alternate() {
+                write!(f, "\n        ")?;
+            }
             for (i, node) in registered_nodes.enumerate() {
                 if i > 0 {
                     if f.alternate() {
-                        write!(f, ",\n    ")?;
+                        write!(f, ",\n        ")?;
                     } else {
                         write!(f, ", ")?;
                     }
                 }
                 write!(f, "{}", node)?;
             }
-            write!(f, "]")?;
+            if f.alternate() {
+                write!(f, ",\n    ]")?;
+            } else {
+                write!(f, "]")?;
+            }
         }
         if f.alternate() {
             write!(f, ",\n")?;
