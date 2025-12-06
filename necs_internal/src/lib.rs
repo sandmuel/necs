@@ -23,10 +23,11 @@ mod trait_map;
 pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
+#[derive(Debug)]
 pub struct World {
     pub(crate) storage: Storage,
     // Maps type ids to types, allowing us to work on nodes without knowing their types.
-    pub trait_map: TraitMap, // TODO: Or do I just make the whole world RwLock?
+    trait_map: TraitMap,
 }
 
 impl World {
@@ -42,9 +43,14 @@ impl World {
         self.trait_map
             .register::<T, dyn Node, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
     }
-    pub fn register_trait<T: NodeRef<Instance<'static> = Trait>, Trait: NodeTrait + 'static>(&mut self) {
+    pub fn register_trait<T, Trait, F>(&mut self, to_trait_obj: F)
+    where
+        T: NodeRef + Node,
+        Trait: NodeTrait + ?Sized + 'static,
+        F: Fn(T::Instance<'static>) -> Box<Trait> + Send + Sync + 'static,
+    {
         self.trait_map
-            .register::<T, Trait, _>(self.storage.nodes.mini_type_of::<T>(), |x| Box::new(x));
+            .register::<T, Trait, _>(self.storage.nodes.mini_type_of::<T>(), to_trait_obj);
     }
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
         node.__move_to_storage(&mut self.storage)
