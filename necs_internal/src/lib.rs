@@ -26,7 +26,7 @@ pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
 #[derive(Debug)]
 pub struct World {
     pub(crate) storage: Storage,
-    // Maps type ids to types, allowing us to work on nodes without knowing their types.
+    // Maps TypeIds to types, allowing us to work on nodes without knowing their types.
     trait_map: TraitMap,
 }
 
