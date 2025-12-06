@@ -27,9 +27,10 @@ impl Debug for TraitMap {
         }
         for (i, trait_type_key) in trait_type_keys.enumerate() {
             if i > 0 {
-                write!(f, ", ")?;
                 if f.alternate() {
-                    write!(f, "\n")?;
+                    write!(f, ",\n")?;
+                } else {
+                    write!(f, ", ")?;
                 }
             }
             let trait_name = self.trait_names.get(trait_type_key).unwrap();
@@ -39,9 +40,10 @@ impl Debug for TraitMap {
             write!(f, "    {}: [", trait_name)?;
             for (i, node) in registered_nodes.enumerate() {
                 if i > 0 {
-                    write!(f, ", ")?;
                     if f.alternate() {
-                        write!(f, "\n    ")?;
+                        write!(f, ",\n    ")?;
+                    } else {
+                        write!(f, ", ")?;
                     }
                 }
                 write!(f, "{}", node)?;
