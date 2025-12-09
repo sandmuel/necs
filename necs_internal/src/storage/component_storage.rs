@@ -1,4 +1,4 @@
-use super::{MiniTypeMap, NodeKey};
+use super::{MiniTypeId, MiniTypeMap, NodeKey};
 use crate::component::ComponentId;
 use std::cell::SyncUnsafeCell;
 
@@ -24,11 +24,11 @@ impl<'a> ComponentStorage {
     ///
     /// components.register::<u32>();
     /// ```
-    pub fn register<T>(&mut self)
+    pub fn register<T>(&mut self) -> MiniTypeId
     where
         T: Send + Sync + 'static,
     {
-        self.0.register::<T, _>();
+        self.0.register::<T, _>()
     }
 
     /// Inserts the given component into storage.
@@ -86,6 +86,16 @@ impl<'a> ComponentStorage {
         unsafe {
             self.0
                 .get_unchecked::<T, _>(id.into(), id.into())
+                .unwrap_or_else(|| panic!("component with id {:?} not found", id))
+                .get()
+                .as_mut_unchecked()
+        }
+    }
+
+    pub fn get_element<T: 'static + Send + Sync>(&self, id: &NodeKey) -> &'a mut T {
+        unsafe {
+            self.0
+                .get_unchecked::<T, _>(self.0.mini_type_of::<T>(), *id)
                 .unwrap_or_else(|| panic!("component with id {:?} not found", id))
                 .get()
                 .as_mut_unchecked()
