@@ -11,7 +11,7 @@ necs_internal = { path = "necs_internal" }
 necs_macros = { path = "necs_macros" }
 
 [dev-dependencies]
-criterion = { version = "0.8.0", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "node_iteration"
