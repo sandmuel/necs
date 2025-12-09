@@ -3,7 +3,6 @@ use crate::NodeKey;
 use crate::Storage;
 use crate::storage::MiniTypeId;
 use std::any::{Any, type_name};
-use std::marker::Tuple;
 
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
@@ -43,7 +42,7 @@ pub trait NodeBuilder {
 /// This trait is only to be implemented by the corresponding proc macro crate.
 pub trait NodeRef: 'static + NodeTrait {
     type Instance<'node>: Node;
-    type RecipeTuple: Tuple + Send + Sync;
+    type RecipeTuple: Send + Sync;
 
     /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
     /// # Safety

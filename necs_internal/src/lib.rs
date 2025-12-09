@@ -1,5 +1,4 @@
 #![feature(downcast_unchecked)]
-#![feature(tuple_trait)]
 #![feature(unsafe_cell_access)]
 #![feature(sync_unsafe_cell)]
 #![feature(ptr_as_ref_unchecked)]
