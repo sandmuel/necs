@@ -373,7 +373,7 @@ impl ToTokens for GeneratedNodeRef {
             if let Type::Reference(type_ref) = &field.ty {
                 let inner_type = &type_ref.elem;
                 field_extractions.push(quote! {
-                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(mini_type_ids.#i, id.instance));
+                        let #name = unsafe { storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(mini_type_ids.#i, id.instance)) };
                     });
             }
 

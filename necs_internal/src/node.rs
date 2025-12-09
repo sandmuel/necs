@@ -1,9 +1,8 @@
 use crate::BorrowDropper;
-use crate::NodeKey;
+use crate::ItemKey;
 use crate::Storage;
 use crate::storage::MiniTypeId;
 use std::any::{Any, type_name};
-use std::marker::Tuple;
 
 /// Used with [`get_node`](crate::World::get_node) or
 /// [`get_node_resilient`](crate::World::get_node_resilient) to retrieve nodes
@@ -13,7 +12,7 @@ pub struct NodeId {
     // TODO: is it safe having this buildable? If two different NodeTypes are given the same key,
     // there's chaos since multiple nodes can have the same component.
     pub node_type: MiniTypeId,
-    pub instance: NodeKey,
+    pub instance: ItemKey,
 }
 
 pub trait Field: Any {}
@@ -43,7 +42,7 @@ pub trait NodeBuilder {
 /// This trait is only to be implemented by the corresponding proc macro crate.
 pub trait NodeRef: 'static + NodeTrait {
     type Instance<'node>: Node;
-    type RecipeTuple: Tuple + Send + Sync;
+    type RecipeTuple: Send + Sync;
 
     /// Assembles a [`NodeRef`] from fields stored in the given [`Storage`].
     /// # Safety

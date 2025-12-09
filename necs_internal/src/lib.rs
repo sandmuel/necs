@@ -1,9 +1,9 @@
 #![feature(downcast_unchecked)]
-#![feature(tuple_trait)]
 #![feature(unsafe_cell_access)]
 #![feature(sync_unsafe_cell)]
 #![feature(ptr_as_ref_unchecked)]
 
+use rustc_hash::FxHashMap as HashMap;
 pub use crate::node::{Field, NodeBuilder, NodeId, NodeRef, NodeTrait};
 use crate::trait_map::TraitMap;
 pub use necs_macros::node;
@@ -12,15 +12,17 @@ use storage::Storage;
 
 mod component;
 pub use crate::node::Node;
-pub use crate::storage::NodeKey;
 pub use component::ComponentId;
 pub use storage::BorrowDropper;
+pub use storage::ItemKey;
+pub use relations::Relations;
 
 mod node;
 pub mod storage;
 mod trait_map;
+mod relations;
 
-pub type SubStorage<T> = SparseSecondaryMap<NodeKey, T>;
+pub type SubStorage<T> = SparseSecondaryMap<ItemKey, T>;
 
 /// Storage for all nodes, related metadata, and functions.
 #[derive(Debug)]
@@ -28,6 +30,8 @@ pub struct World {
     pub(crate) storage: Storage,
     // Maps TypeIds to types, allowing us to work on nodes without knowing their types.
     trait_map: TraitMap,
+    // TODO: I should really give this a better name.
+    pub community: HashMap<ItemKey, Relations>,
 }
 
 impl World {
@@ -53,7 +57,9 @@ impl World {
             .register::<T, Trait, _>(self.storage.nodes.mini_type_of::<T>(), to_trait_obj);
     }
     pub fn spawn_node<T: NodeBuilder>(&mut self, node: T) -> NodeId {
-        node.__move_to_storage(&mut self.storage)
+        let node_id = node.__move_to_storage(&mut self.storage);
+        self.community.insert(node_id.instance, Relations::new(None));
+        node_id
     }
     pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
         // The safety of this entirely depends on everything else not having issues.
@@ -103,6 +109,7 @@ impl Default for World {
         Self {
             storage: Storage::new(),
             trait_map: TraitMap::new(),
+            community: HashMap::default(),
         }
     }
 }

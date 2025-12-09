@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-slotmap = "1.0.7"
-rustc-hash = "2.1.1"
+slotmap = "1.0"
+rustc-hash = "2.1"
 necs_macros = { path = "../necs_macros" }
 
 [dev-dependencies]
