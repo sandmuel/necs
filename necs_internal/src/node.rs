@@ -1,5 +1,5 @@
 use crate::BorrowDropper;
-use crate::NodeKey;
+use crate::ItemKey;
 use crate::Storage;
 use crate::storage::MiniTypeId;
 use std::any::{Any, type_name};
@@ -12,7 +12,7 @@ pub struct NodeId {
     // TODO: is it safe having this buildable? If two different NodeTypes are given the same key,
     // there's chaos since multiple nodes can have the same component.
     pub node_type: MiniTypeId,
-    pub instance: NodeKey,
+    pub instance: ItemKey,
 }
 
 pub trait Field: Any {}

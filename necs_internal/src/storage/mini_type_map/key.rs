@@ -11,5 +11,5 @@ new_key_type! {
     /// [`World`]: crate::World
     /// [`NodeId`]: crate::NodeId
     /// [`ComponentId`]: crate::ComponentId
-    pub struct NodeKey;
+    pub struct ItemKey;
 }

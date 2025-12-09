@@ -1,4 +1,4 @@
-use crate::NodeKey;
+use crate::ItemKey;
 use crate::storage::{MiniTypeId, MiniTypeMap};
 use crate::{NodeId, NodeRef};
 use core::panic;
@@ -34,7 +34,7 @@ pub struct RecipeTupleCell<T> {
 #[derive(Debug)]
 pub struct NodeStorage {
     // This map only serves to generate unique keys.
-    key_factory: SlotMap<NodeKey, ()>,
+    key_factory: SlotMap<ItemKey, ()>,
     nodes: MiniTypeMap,
 }
 
@@ -46,7 +46,7 @@ impl NodeStorage {
         }
     }
 
-    fn mint_key(&mut self) -> NodeKey {
+    fn mint_key(&mut self) -> ItemKey {
         self.key_factory.insert(())
     }
 
@@ -106,7 +106,7 @@ impl NodeStorage {
     pub fn get_ids<T: NodeRef>(&self) -> impl ExactSizeIterator<Item = NodeId> {
         let node_type = self.nodes.mini_type_of::<T>();
         let keys = self.nodes.keys::<T, _>();
-        keys.map(move |node_key: &NodeKey| NodeId {
+        keys.map(move |node_key: &ItemKey| NodeId {
             node_type,
             instance: *node_key,
         })

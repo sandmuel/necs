@@ -9,7 +9,7 @@ mod mini_type_id;
 pub use mini_type_id::MiniTypeId;
 
 mod key;
-pub use key::NodeKey;
+pub use key::ItemKey;
 
 #[cold]
 #[inline(never)]
@@ -35,7 +35,7 @@ impl MiniTypeMap {
         let next_idx = self.id_map.len();
         let entry = self.id_map.entry(type_id).or_insert_with(|| {
             let mini_type_id = MiniTypeId::from(next_idx);
-            let sub_map: HashMap<NodeKey, T::Value> = HashMap::default();
+            let sub_map: HashMap<ItemKey, T::Value> = HashMap::default();
             self.data.push(Box::new(sub_map));
             mini_type_id
         });
@@ -52,7 +52,7 @@ impl MiniTypeMap {
     }
 
     #[inline]
-    pub fn insert<T: MiniTypeMapKey<D>, D>(&mut self, key: NodeKey, item: T::Value) {
+    pub fn insert<T: MiniTypeMapKey<D>, D>(&mut self, key: ItemKey, item: T::Value) {
         let mini_type_id = self.mini_type_of::<T>();
         let sub_map = unsafe {
             // SAFETY: The call to mini_type_of() would have panicked if the type wasn't
@@ -61,13 +61,13 @@ impl MiniTypeMap {
                 .get_unchecked_mut(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.insert(key, item);
     }
 
     #[inline]
-    pub fn keys<T: MiniTypeMapKey<D>, D>(&self) -> impl ExactSizeIterator<Item = &NodeKey> {
+    pub fn keys<T: MiniTypeMapKey<D>, D>(&self) -> impl ExactSizeIterator<Item = &ItemKey> {
         let mini_type_id = self.mini_type_of::<T>();
         let sub_map = unsafe {
             // SAFETY: The call to mini_type_of() would have panicked if the type wasn't
@@ -76,7 +76,7 @@ impl MiniTypeMap {
                 .get_unchecked(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.keys()
     }
@@ -91,7 +91,7 @@ impl MiniTypeMap {
                 .get_unchecked(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.values()
     }
@@ -108,7 +108,7 @@ impl MiniTypeMap {
                 .get_unchecked_mut(mini_type_id.index())
                 // SAFETY: We know this is the correct type because both the key and value are
                 // derived from the same type.
-                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.values_mut()
     }
@@ -117,14 +117,14 @@ impl MiniTypeMap {
     pub unsafe fn get_unchecked<T: MiniTypeMapKey<D>, D>(
         &self,
         mini_type_id: MiniTypeId,
-        key: NodeKey,
+        key: ItemKey,
     ) -> Option<&T::Value> {
         let sub_map = unsafe {
             self.data
                 .get(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
                 // SAFETY: the caller guarantees T corresponds to mini_type_id.
-                .downcast_unchecked_ref::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_ref::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.get(&key)
     }
@@ -133,14 +133,14 @@ impl MiniTypeMap {
     pub unsafe fn get_mut_unchecked<T: MiniTypeMapKey<D>, D>(
         &mut self,
         mini_type_id: MiniTypeId,
-        key: NodeKey,
+        key: ItemKey,
     ) -> Option<&mut T::Value> {
         let sub_map = unsafe {
             self.data
                 .get_mut(mini_type_id.index())
                 .unwrap_or_else(|| type_not_registered::<T>())
                 // SAFETY: the caller guarantees T corresponds to mini_type_id.
-                .downcast_unchecked_mut::<HashMap<NodeKey, T::Value>>()
+                .downcast_unchecked_mut::<HashMap<ItemKey, T::Value>>()
         };
         sub_map.get_mut(&key)
     }
