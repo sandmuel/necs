@@ -350,7 +350,6 @@ impl ToTokens for GeneratedNodeRef {
 
         let mut field_extractions = Vec::new();
         let mut component_registrations = Vec::new();
-        let mut tuple_idx = 0;
         let generic_idents = only_generic_idents(generics);
         let mut world_and_generics = generics.clone();
         let mut world_and_generic_idents = generic_idents.clone();
@@ -360,33 +359,42 @@ impl ToTokens for GeneratedNodeRef {
             world_and_generic_idents = with_lifetime(world_and_generic_idents, "world");
             static_and_generic_idents = with_lifetime(static_and_generic_idents, "static");
         }
+        let mut mini_type_id_tuple = Vec::new();
 
-        for field in fields {
+        let ext_fields = fields.iter().filter(|field| field.is_ext);
+        let local_fields = fields.iter().filter(|field| !field.is_ext);
+
+        for (i, field) in ext_fields.enumerate() {
             let name = &field.ident;
 
-            if field.is_ext {
-                // For #ext fields, access them using the node's instance id.
-                if let Type::Reference(type_ref) = &field.ty {
-                    let inner_type = &type_ref.elem;
-                    field_extractions.push(quote! {
-                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(id.node_type, id.instance));
-                    });
-                }
+            let i = syn::Index::from(i);
 
-                // Get the original type. (without the reference)
-                if let Type::Reference(type_ref) = &field.ty {
-                    let inner_type = &type_ref.elem;
-                    component_registrations.push(quote! {
-                        storage.components.register::<#inner_type>();
-                    });
-                }
-            } else {
-                let idx = syn::Index::from(tuple_idx);
+            // For #ext fields, access them using the node's instance id.
+            if let Type::Reference(type_ref) = &field.ty {
+                let inner_type = &type_ref.elem;
                 field_extractions.push(quote! {
-                    let #name = &mut recipe_tuple.#idx;
-                });
-                tuple_idx += 1;
+                        let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(mini_type_ids.#i, id.instance));
+                    });
             }
+
+            // Get the original type. (without the reference)
+            if let Type::Reference(type_ref) = &field.ty {
+                let inner_type = &type_ref.elem;
+                component_registrations.push(quote! {
+                    storage.components.register::<#inner_type>()
+                });
+            }
+
+            mini_type_id_tuple.push(quote! { ::necs::storage::MiniTypeId });
+        }
+
+        for (i, field) in local_fields.enumerate() {
+            let name = &field.ident;
+
+            let i = syn::Index::from(i);
+            field_extractions.push(quote! {
+                let #name = &mut recipe_tuple.#i;
+            });
         }
 
         let field_names = fields.iter().map(|f| &f.ident);
@@ -408,6 +416,8 @@ impl ToTokens for GeneratedNodeRef {
                 #(#struct_fields)*
             }
 
+            static MINI_TYPE_IDS: std::sync::OnceLock<(#( #mini_type_id_tuple, )*)> = std::sync::OnceLock::new();
+
             #[doc(hidden)]
             impl #world_and_generics ::necs::NodeTrait for #ident #world_and_generic_idents {
                 fn get(&mut self, field_name: &str) -> &mut dyn ::necs::Field {
@@ -424,6 +434,8 @@ impl ToTokens for GeneratedNodeRef {
                 type RecipeTuple = #recipe_tuple;
 
                 unsafe fn __build_from_storage<'world>(recipe_tuple: &'world mut Self::RecipeTuple, borrowed: ::necs::BorrowDropper<'world>, storage: &'world ::necs::storage::Storage, id: ::necs::NodeId) -> #ident #world_and_generic_idents {
+                    // We were able to get recipe_tuple, so components should also be registered.
+                    let mini_type_ids = MINI_TYPE_IDS.get().unwrap();
                     #(#field_extractions)*
                     #ident {
                         #borrowed
@@ -432,11 +444,11 @@ impl ToTokens for GeneratedNodeRef {
                 }
 
                 fn __register_node(storage: &mut ::necs::storage::Storage) {
-                    // Register the node itself
-                    storage.nodes.register::<Self>();
+                    // Register the node itself.
+                    _ = storage.nodes.register::<Self>();
 
-                    // Register every #[ext] field with component storage
-                    #(#component_registrations)*
+                    // Register every #[ext] field with component storage.
+                    _ = MINI_TYPE_IDS.set((#( #component_registrations, )*));
                 }
             }
         }.to_tokens(tokens);

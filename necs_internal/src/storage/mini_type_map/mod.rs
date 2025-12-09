@@ -30,14 +30,16 @@ impl MiniTypeMap {
     /// Registers type [`T`] to this map.
     ///
     /// We can get the [`MiniTypeId`] of [`T`] using [`Self::mini_type_of`].
-    pub fn register<T: MiniTypeMapKey<D>, D>(&mut self) {
+    pub fn register<T: MiniTypeMapKey<D>, D>(&mut self) -> MiniTypeId {
         let type_id = TypeId::of::<T>();
-        if !self.id_map.contains_key(&type_id) {
-            let mini_type_id = MiniTypeId::from(self.id_map.len());
-            self.id_map.insert(type_id, mini_type_id);
+        let next_idx = self.id_map.len();
+        let entry = self.id_map.entry(type_id).or_insert_with(|| {
+            let mini_type_id = MiniTypeId::from(next_idx);
             let sub_map: HashMap<NodeKey, T::Value> = HashMap::default();
             self.data.push(Box::new(sub_map));
-        }
+            mini_type_id
+        });
+        *entry
     }
 
     /// Returns the [`MiniTypeId`] corresponding to [`T`].
