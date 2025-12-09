@@ -36,7 +36,6 @@ mod tests {
         let mut world = World::new();
         world.register_node::<Foo<u32>>();
         world.register_trait::<Foo<u32>, dyn Process, _>(|x| Box::new(x));
-        println!("{:#?}", world);
 
         let node_id = world.spawn_node(FooBuilder {
             x: Useless,

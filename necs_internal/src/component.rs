@@ -1,4 +1,4 @@
-use crate::storage::{MiniTypeId, NodeKey};
+use super::{storage::MiniTypeId, NodeKey};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 

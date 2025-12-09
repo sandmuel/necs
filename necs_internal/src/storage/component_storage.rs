@@ -1,4 +1,5 @@
-use super::{MiniTypeId, MiniTypeMap, NodeKey};
+use super::{MiniTypeId, MiniTypeMap};
+use crate::NodeKey;
 use crate::component::ComponentId;
 use std::cell::SyncUnsafeCell;
 

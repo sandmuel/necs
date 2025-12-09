@@ -11,7 +11,7 @@ use storage::Storage;
 
 mod component;
 pub use crate::node::Node;
-pub use crate::storage::NodeKey;
+pub use storage::NodeKey;
 pub use component::ComponentId;
 pub use storage::BorrowDropper;
 
