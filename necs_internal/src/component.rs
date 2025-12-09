@@ -1,4 +1,4 @@
-use super::{storage::MiniTypeId, NodeKey};
+use super::{NodeKey, storage::MiniTypeId};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 
