@@ -372,8 +372,6 @@ impl ToTokens for GeneratedNodeRef {
             // For #ext fields, access them using the node's instance id.
             if let Type::Reference(type_ref) = &field.ty {
                 let inner_type = &type_ref.elem;
-                // TODO: make it use the right index of mini_type_ids based on which ext field
-                // this is.
                 field_extractions.push(quote! {
                         let #name = storage.components.get_element_unchecked(&::necs::ComponentId::<#inner_type>::new(mini_type_ids.#i, id.instance));
                     });
