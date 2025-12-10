@@ -55,6 +55,8 @@ pub trait NodeRef: 'static + NodeTrait {
         id: NodeId,
     ) -> Self::Instance<'node>;
 
+    fn __remove_from_storage(storage: &mut Storage, id: &NodeId);
+
     /// Registers this node to node storage and all fields with the `#[ext]`
     /// attribute to component storage.
     fn __register_node(storage: &mut Storage);

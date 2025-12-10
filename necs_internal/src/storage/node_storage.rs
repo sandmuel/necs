@@ -79,6 +79,10 @@ impl NodeStorage {
         }
     }
 
+    pub fn free<T>(&mut self, id: &NodeId) where T: NodeRef {
+        self.nodes.remove::<T, _>(&id.instance)
+    }
+
     /// TODO
     #[allow(clippy::mut_from_ref)] // We do our own borrow checking.
     pub fn get_element<T>(&'_ self, id: NodeId) -> (&'_ mut T::RecipeTuple, BorrowDropper<'_>)
@@ -88,8 +92,7 @@ impl NodeStorage {
         let node_cell: &RecipeTupleCell<T::RecipeTuple> = unsafe {
             // TODO: ensure a custom NodeId can't be created to avoid a mismatch.
             self.nodes
-                .get_unchecked::<T, _>(id.node_type, id.instance)
-                .unwrap()
+                .get_unchecked::<T, _>(id.node_type, id.instance).unwrap_or_else(|| panic!("node does not exist"))
         };
         match node_cell
             .borrowed

@@ -61,6 +61,9 @@ impl World {
         self.community.insert(node_id.instance, Relations::new(None));
         node_id
     }
+    pub fn free_node<T>(&mut self, node_id: &NodeId) where T: NodeRef {
+        self.storage.nodes.free::<T>(node_id);
+    }
     pub fn get_node<T: NodeRef>(&self, id: NodeId) -> T::Instance<'_> {
         // The safety of this entirely depends on everything else not having issues.
         let (recipe_tuple, borrow_dropper) = self.storage.nodes.get_element::<T>(id);

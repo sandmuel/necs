@@ -46,6 +46,10 @@ impl<'a> ComponentStorage {
         unsafe { ComponentId::new(self.0.mini_type_of::<T>(), key) }
     }
 
+    pub fn remove<T>(&mut self, key: ItemKey) where T: 'static + Send + Sync {
+        self.0.remove::<T, _>(&key);
+    }
+
     /// Gets a mutable reference to an element of type `T` from the internal map
     /// using an unchecked operation.
     ///

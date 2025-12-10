@@ -443,9 +443,15 @@ impl ToTokens for GeneratedNodeRef {
                     }
                 }
 
+                fn __remove_from_storage(storage: &mut ::necs::storage::Storage, id: &::necs::NodeId) {
+                    storage.nodes.free::<Self>(id);
+                    // TODO: also remove components.
+                    //storage.components.remove::<>();
+                }
+
                 fn __register_node(storage: &mut ::necs::storage::Storage) {
                     // Register the node itself.
-                    _ = storage.nodes.register::<Self>();
+                    storage.nodes.register::<Self>();
 
                     // Register every #[ext] field with component storage.
                     _ = MINI_TYPE_IDS.set((#( #component_registrations, )*));

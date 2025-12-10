@@ -67,6 +67,21 @@ impl MiniTypeMap {
     }
 
     #[inline]
+    pub fn remove<T: MiniTypeMapKey<D>, D>(&mut self, key: &ItemKey) {
+        let mini_type_id = self.mini_type_of::<T>();
+        let sub_map = unsafe {
+            // SAFETY: The call to mini_type_of() would have panicked if the type wasn't
+            // registered.
+            self.data
+                .get_unchecked_mut(mini_type_id.index())
+                // SAFETY: We know this is the correct type because both the key and value are
+                // derived from the same type.
+                .downcast_unchecked_mut::<HashMap<ItemKey, T::Value>>()
+        };
+        sub_map.remove(key);
+    }
+
+    #[inline]
     pub fn keys<T: MiniTypeMapKey<D>, D>(&self) -> impl ExactSizeIterator<Item = &ItemKey> {
         let mini_type_id = self.mini_type_of::<T>();
         let sub_map = unsafe {
