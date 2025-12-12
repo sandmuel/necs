@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+boxcar = "0.2"
 slotmap = "1.0"
 rustc-hash = "2.1"
 necs_macros = { path = "../necs_macros" }
 
 [dev-dependencies]
-necs = { path = "../" }
+necs = { path = ".." }

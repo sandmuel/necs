@@ -8,7 +8,7 @@ use std::marker::PhantomPinned;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
-/// For use by the #[node] macro, this drops runtime borrows.
+/// For use by the `#[node]` macro, this drops runtime borrows.
 pub struct BorrowDropper<'a>(&'a AtomicBool, PhantomPinned);
 
 impl<'a> BorrowDropper<'a> {

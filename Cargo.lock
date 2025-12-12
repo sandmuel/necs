@@ -39,6 +39,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "boxcar"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36f64beae40a84da1b4b26ff2761a5b895c12adc41dc25aaee1c4f2bbfe97a6e"
+
+[[package]]
 name = "bumpalo"
 version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,6 +256,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "necs_internal",
+ "necs_internal2",
  "necs_macros",
 ]
 
@@ -257,6 +264,18 @@ dependencies = [
 name = "necs_internal"
 version = "0.1.0"
 dependencies = [
+ "boxcar",
+ "necs",
+ "necs_macros",
+ "rustc-hash",
+ "slotmap",
+]
+
+[[package]]
+name = "necs_internal2"
+version = "0.1.0"
+dependencies = [
+ "boxcar",
  "necs",
  "necs_macros",
  "rustc-hash",

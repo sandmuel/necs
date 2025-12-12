@@ -8,6 +8,7 @@ categories = ["game-development"]
 
 [dependencies]
 necs_internal = { path = "necs_internal" }
+necs_internal2 = { path = "necs_internal2" }
 necs_macros = { path = "necs_macros" }
 
 [dev-dependencies]
