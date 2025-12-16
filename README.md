@@ -4,7 +4,7 @@ NECS (Not Entity Component System) is a crate aiming to strike a good balance be
 ## Features
 
 ### Entities (referred to as nodes) **can** have behavior.
-```rs
+```rust
 #[node]
 struct MyNode {
     x: u32,
@@ -20,7 +20,7 @@ impl MyNode<'_> {
 }
 ```
 ### Fields can be marked with the `#[ext]` attribute to place them with other fields of the same type as opposed to the object for efficient use of cache.
-```rs
+```rust
 #[node]
 struct MyNode {
     x: u32,
@@ -30,7 +30,7 @@ struct MyNode {
 }
 ```
 ### Nodes can be retrieved without knowing the concrete type.
-```rs
+```rust
 #[node]
 struct MyNode {
     x: u32,
